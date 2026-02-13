@@ -1,0 +1,199 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'auth_provider.dart';
+
+// **************************************************************************
+// RiverpodGenerator
+// **************************************************************************
+
+String _$secureStorageHash() => r'77df30c7098a9f252222741225993ef719fafe36';
+
+/// =====================
+/// Secure Storage
+/// =====================
+///
+/// Copied from [secureStorage].
+@ProviderFor(secureStorage)
+final secureStorageProvider =
+    AutoDisposeProvider<FlutterSecureStorage>.internal(
+      secureStorage,
+      name: r'secureStorageProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$secureStorageHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SecureStorageRef = AutoDisposeProviderRef<FlutterSecureStorage>;
+String _$networkInfoHash() => r'2bf44e6bdb28d5de63bc0a507b333a33e83758e9';
+
+/// =====================
+/// Network Info
+/// =====================
+///
+/// Copied from [networkInfo].
+@ProviderFor(networkInfo)
+final networkInfoProvider = AutoDisposeProvider<NetworkInfo>.internal(
+  networkInfo,
+  name: r'networkInfoProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$networkInfoHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NetworkInfoRef = AutoDisposeProviderRef<NetworkInfo>;
+String _$apiClientHash() => r'a5bc46d8d786d77724a7e7f62a342b406c98e8b1';
+
+/// =====================
+/// API Client
+/// =====================
+///
+/// Copied from [apiClient].
+@ProviderFor(apiClient)
+final apiClientProvider = AutoDisposeProvider<ApiClient>.internal(
+  apiClient,
+  name: r'apiClientProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$apiClientHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ApiClientRef = AutoDisposeProviderRef<ApiClient>;
+String _$authRemoteDataSourceHash() =>
+    r'3c96ca463b5b1dea913cb8449165c8a749aa129c';
+
+/// =====================
+/// Remote DataSource
+/// =====================
+///
+/// Copied from [authRemoteDataSource].
+@ProviderFor(authRemoteDataSource)
+final authRemoteDataSourceProvider =
+    AutoDisposeProvider<AuthRemoteDataSource>.internal(
+      authRemoteDataSource,
+      name: r'authRemoteDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$authRemoteDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AuthRemoteDataSourceRef = AutoDisposeProviderRef<AuthRemoteDataSource>;
+String _$authLocalDataSourceHash() =>
+    r'5505e206a9e9252d82333996a8d70aa99e3ecf2a';
+
+/// =====================
+/// Local DataSource
+/// =====================
+///
+/// Copied from [authLocalDataSource].
+@ProviderFor(authLocalDataSource)
+final authLocalDataSourceProvider =
+    AutoDisposeProvider<AuthLocalDataSource>.internal(
+      authLocalDataSource,
+      name: r'authLocalDataSourceProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$authLocalDataSourceHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AuthLocalDataSourceRef = AutoDisposeProviderRef<AuthLocalDataSource>;
+String _$authRepositoryHash() => r'317107b8f2b290abc8b45a69419314510a7e50fd';
+
+/// =====================
+/// Repository
+/// =====================
+///
+/// Copied from [authRepository].
+@ProviderFor(authRepository)
+final authRepositoryProvider = AutoDisposeProvider<AuthRepositoryImpl>.internal(
+  authRepository,
+  name: r'authRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$authRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AuthRepositoryRef = AutoDisposeProviderRef<AuthRepositoryImpl>;
+String _$loginUseCaseHash() => r'e5d70fa1e5543d7d6609678d0835d0c67d436c2d';
+
+/// =====================
+/// UseCases
+/// =====================
+///
+/// Copied from [loginUseCase].
+@ProviderFor(loginUseCase)
+final loginUseCaseProvider = AutoDisposeProvider<LoginUseCase>.internal(
+  loginUseCase,
+  name: r'loginUseCaseProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$loginUseCaseHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LoginUseCaseRef = AutoDisposeProviderRef<LoginUseCase>;
+String _$registerUseCaseHash() => r'40b32ebe481f7183de4ac3eaac00f8473d98eaeb';
+
+/// See also [registerUseCase].
+@ProviderFor(registerUseCase)
+final registerUseCaseProvider = AutoDisposeProvider<RegisterUseCase>.internal(
+  registerUseCase,
+  name: r'registerUseCaseProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$registerUseCaseHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef RegisterUseCaseRef = AutoDisposeProviderRef<RegisterUseCase>;
+String _$authStateHash() => r'9ddaa8b2a269e1e61c87f48b94c5f07515a16e1c';
+
+/// =====================
+/// Auth State (Notifier)
+/// =====================
+///
+/// Copied from [AuthState].
+@ProviderFor(AuthState)
+final authStateProvider =
+    AutoDisposeNotifierProvider<AuthState, AsyncValue<User?>>.internal(
+      AuthState.new,
+      name: r'authStateProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$authStateHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$AuthState = AutoDisposeNotifier<AsyncValue<User?>>;
+// ignore_for_file: type=lint
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
