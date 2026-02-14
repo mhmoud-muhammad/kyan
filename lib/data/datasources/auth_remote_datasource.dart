@@ -13,17 +13,19 @@ final TokenManager tokenManager;
   AuthRemoteDataSource(this.apiClient, this.tokenManager);
 
   /// 🔹 تسجيل الدخول
-  Future<AuthResponse> login(String email, String password) async {
+  Future<AuthResponse> login(String phone, String password) async {
     if (ApiConstants.useDummyData) {
       await Future.delayed(const Duration(seconds: 1));
-      final dummyResponse = DummyData.authenticate(email, password);
+      final dummyResponse = DummyData.authenticate(phone, password);
+      print('dummyResponse: $dummyResponse');
+
       if (dummyResponse != null) return AuthResponse.fromJson(dummyResponse);
-      throw ServerException('Invalid email or password');
+      throw ServerException('Invalid phone or password');
     }
 
     final response = await apiClient.post(
       ApiConstants.loginEndpoint,
-      data: {'email': email, 'password': password},
+      data: {'phone': phone, 'password': password},
     );
 
     return AuthResponse.fromJson(response.data);
@@ -31,7 +33,6 @@ final TokenManager tokenManager;
 
   /// 🔹 تسجيل مستخدم جديد
   Future<AuthResponse> register({
-    required String email,
     required String password,
     required String name,
     String? phone,
@@ -39,7 +40,6 @@ final TokenManager tokenManager;
     if (ApiConstants.useDummyData) {
       await Future.delayed(const Duration(seconds: 1));
       final dummyResponse = DummyData.createDummyUser(
-        email: email,
         name: name,
         phone: phone,
       );
@@ -49,7 +49,6 @@ final TokenManager tokenManager;
     final response = await apiClient.post(
       ApiConstants.registerEndpoint,
       data: {
-        'email': email,
         'password': password,
         'name': name,
         'phone': phone,
@@ -63,7 +62,7 @@ final TokenManager tokenManager;
   Future<Map<String, dynamic>> getCurrentUser() async {
     if (ApiConstants.useDummyData) {
       await Future.delayed(const Duration(milliseconds: 500));
-      return DummyData.dummyUser;
+      return DummyData.dummyParentUser; // تأكد من أن هذا يحتوي على بيانات المستخدم الوهمية المناسبة
     }
 
     final response = await apiClient.get(ApiConstants.userEndpoint);

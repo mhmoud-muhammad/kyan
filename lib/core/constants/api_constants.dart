@@ -23,6 +23,9 @@ class ApiConstants {
 
   static const String apiVersion =
       String.fromEnvironment('API_VERSION', defaultValue: 'v1');
+    
+  static const String updateStudentStatusEndpoint = 
+  '/teacher/student/'; // سيتم إضافة ID
 
   // ================= BASE DOMAINS =================
 
@@ -47,6 +50,17 @@ class ApiConstants {
   static const String logoutEndpoint = '/auth/logout';
   static const String forgotPasswordEndpoint = '/auth/forgot-password';
   static const String resetPasswordEndpoint = '/auth/reset-password';
+  // (داخل كلاس ApiConstants)
+
+  // ================= PARENT ENDPOINTS =================
+  static const String parentSchoolsEndpoint = '/parent/schools/';
+  static const String parentStudentsEndpoint = '/parent/students/'; // سيتم إضافة Query param لاحقًا
+
+  // ================= TEACHER ENDPOINTS =================
+  static const String teacherDashboardEndpoint = '/teacher/dashboard/';
+  static const String teacherActiveRequestsEndpoint = '/teacher/requests/active/';
+  static const String teacherPastRequestsEndpoint = '/teacher/requests/past/';
+  static const String teacherRequestDetailsEndpoint = '/teacher/requests/'; // سيتم إضافة ID
 
   // ================= USER ENDPOINTS =================
 
@@ -64,9 +78,16 @@ class ApiConstants {
   static const int tokenLifetimeMinutes =
   int.fromEnvironment('TOKEN_LIFETIME', defaultValue: 15);
 
+  // (داخل كلاس ApiConstants)
+
+  // ================= PARENT ENDPOINTS =================
+  // ✅✅✅ الإضافة الجديدة ✅✅✅
+  static const String createPickupRequestEndpoint = '/parent/pickup/create/';
+
+
   // ================= DUMMY DATA =================
   static const bool useDummyData =
-  bool.fromEnvironment('USE_DUMMY_DATA', defaultValue: false);
+  bool.fromEnvironment('USE_DUMMY_DATA', defaultValue: true);
 
 }
 

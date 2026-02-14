@@ -1,3 +1,4 @@
+//lib/presentation/providers/auth_provider.dart
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:myapp/data/datasources/auth_local_datasource.dart';
 import 'package:myapp/data/datasources/auth_remote_datasource.dart';
@@ -130,12 +131,12 @@ class AuthState extends _$AuthState {
   /// =====================
   /// Login
   /// =====================
-  Future<void> login(String email, String password) async {
+  Future<void> login(String phone, String password) async {
     state = const AsyncLoading();
 
     final useCase = ref.read(loginUseCaseProvider);
     final result = await useCase(
-      LoginParams(email: email, password: password),
+      LoginParams(phone: phone, password: password),
     );
 
     state = result.fold(
@@ -148,7 +149,6 @@ class AuthState extends _$AuthState {
   /// Register
   /// =====================
   Future<void> register({
-    required String email,
     required String password,
     required String name,
     String? phone,
@@ -158,7 +158,6 @@ class AuthState extends _$AuthState {
     final useCase = ref.read(registerUseCaseProvider);
     final result = await useCase(
       RegisterParams(
-        email: email,
         password: password,
         name: name,
         phone: phone,
@@ -176,6 +175,12 @@ class AuthState extends _$AuthState {
   /// =====================
   Future<void> logout() async {
     final repo = ref.read(authRepositoryProvider);
+    await repo.logout();
+    state = const AsyncData(null);
+  }
+
+  Future<void> signOut() async {
+     final repo = ref.read(authRepositoryProvider);
     await repo.logout();
     state = const AsyncData(null);
   }

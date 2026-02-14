@@ -196,7 +196,7 @@ final registerUseCaseProvider = AutoDisposeProvider<RegisterUseCase>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef RegisterUseCaseRef = AutoDisposeProviderRef<RegisterUseCase>;
-String _$authStateHash() => r'9ddaa8b2a269e1e61c87f48b94c5f07515a16e1c';
+String _$authStateHash() => r'f1f44928b8439e77075134d2fb367ed80e5c8939';
 
 /// =====================
 /// Auth State (Notifier)

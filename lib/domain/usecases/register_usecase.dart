@@ -10,7 +10,6 @@ class RegisterUseCase {
   
   Future<Either<Failure, AuthResponse>> call(RegisterParams params) async {
     return await repository.register(
-      email: params.email,
       password: params.password,
       name: params.name,
       phone: params.phone,
@@ -19,13 +18,11 @@ class RegisterUseCase {
 }
 
 class RegisterParams {
-  final String email;
   final String password;
   final String name;
   final String? phone;
   
   RegisterParams({
-    required this.email,
     required this.password,
     required this.name,
     this.phone,

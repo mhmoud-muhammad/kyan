@@ -1,4 +1,4 @@
-
+//lib/core/constants/app_constants.dart
 class AppConstants {
   static const String appName = 'Kyan';
   static const String appVersion = '1.0.0';

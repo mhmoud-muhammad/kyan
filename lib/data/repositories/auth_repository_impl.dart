@@ -1,3 +1,4 @@
+//lib/data/repositories/auth_repository_impl.dart
 import 'package:dartz/dartz.dart';
 import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/network/token_manager.dart';
@@ -25,13 +26,13 @@ class AuthRepositoryImpl implements AuthRepository {
   /// 🔹 تسجيل الدخول
   @override
   Future<Either<Failure, AuthResponse>> login({
-    required String email,
+    required String phone,
     required String password,
   }) async {
     if (!await networkInfo.isConnected) return Left(NetworkFailure());
 
     try {
-      final authResponse = await remoteDataSource.login(email, password);
+      final authResponse = await remoteDataSource.login(phone, password);
 
       // حفظ التوكن ووقت الإصدار
       await localDataSource.cacheTokens(
@@ -58,7 +59,6 @@ class AuthRepositoryImpl implements AuthRepository {
   /// 🔹 تسجيل مستخدم جديد
   @override
   Future<Either<Failure, AuthResponse>> register({
-    required String email,
     required String password,
     required String name,
     String? phone,
@@ -67,7 +67,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
     try {
       final authResponse = await remoteDataSource.register(
-        email: email,
         password: password,
         name: name,
         phone: phone,

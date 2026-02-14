@@ -1,3 +1,4 @@
+//lib/presentation/screens/auth/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,7 +14,6 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -114,18 +114,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Email Field
+                // phone Field
                 TextFormField(
-                  controller: _emailController,
+                  controller: _phoneController,
                   decoration: InputDecoration(
-                    labelText: 'البريد الإلكتروني',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'رقم الهاتف',
+                    prefixIcon: const Icon(Icons.phone_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: Validators.email,
+                  keyboardType: TextInputType.phone,
+                  validator: Validators.phone,
                 ),
                 const SizedBox(height: 16),
                 
@@ -253,10 +253,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void _register() {
     if (_formKey.currentState!.validate()) {
       ref.read(authStateProvider.notifier).register(
-        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
         password: _passwordController.text,
         name: _nameController.text.trim(),
-        phone: _phoneController.text.isNotEmpty ? _phoneController.text.trim() : null,
       );
     }
   }
@@ -264,7 +263,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _phoneController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();

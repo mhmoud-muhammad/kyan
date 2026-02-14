@@ -1,4 +1,4 @@
-// ملف موحد لتصدير جميع الملفات الأساسية
+//lib/core/kyan.dart
 library;
 
 // Constants

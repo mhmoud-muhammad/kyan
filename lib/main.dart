@@ -3,17 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 //import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/kyan.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   //final storage = const FlutterSecureStorage();
 
-  
-  runApp(
-    const ProviderScope(
-      child: KyanApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: KyanApp()));
 }
 
 class KyanApp extends StatelessWidget {
@@ -24,7 +20,7 @@ class KyanApp extends StatelessWidget {
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
-      
+
       // Localization
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -35,12 +31,12 @@ class KyanApp extends StatelessWidget {
         Locale('ar', 'AE'), // العربية
       ],
       locale: const Locale('ar', 'AE'),
-      
+
       // Theme
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      darkTheme: AppTheme.lightTheme, // Using light theme for both modes in this example
       themeMode: ThemeMode.light,
-      
+
       // Router
       routerConfig: appRouter,
     );

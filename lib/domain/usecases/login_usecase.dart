@@ -11,18 +11,18 @@ class LoginUseCase {
   
   Future<Either<Failure, AuthResponse>> call(LoginParams params) async {
     return await repository.login(
-      email: params.email,
+      phone: params.phone,
       password: params.password,
     );
   }
 }
 
 class LoginParams {
-  final String email;
+  final String phone;
   final String password;
   
   LoginParams({
-    required this.email,
+    required this.phone,
     required this.password,
   });
 }

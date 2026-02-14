@@ -1,4 +1,4 @@
-
+//lib/presentation/screens/splash/splash_screen.dart
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,32 +23,51 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
     _controller.forward();
-    
+
     _checkAuth();
   }
 
+// (داخل _SplashScreenState)
+
   Future<void> _checkAuth() async {
+    // الانتظار قليلاً لعرض الشعار
     await Future.delayed(const Duration(seconds: 2));
-    final repository = ref.read(authRepositoryProvider);
-    final result = await repository.isAuthenticated();
-    
+
+    // الوصول إلى localDataSource لجلب بيانات المستخدم المخزنة
+    final localDataSource = ref.read(authLocalDataSourceProvider);
+    final isAuthenticated = await localDataSource.hasValidToken();
+
     if (!mounted) return;
-    
-    result.fold(
-      (failure) => context.go('/login'),
-      (isAuthenticated) {
-        if (isAuthenticated) {
-          context.go('/home');
-        } else {
-          context.go('/login');
+
+    if (isAuthenticated) {
+      final user = await localDataSource.getCachedUser();
+      if (user != null) {
+        // --- نفس المنطق الذكي للتوجيه ---
+        final role = user.role.toUpperCase();
+        switch (role) {
+          case 'PARENT':
+          case 'GUARDIAN':
+            context.go('/guardian');
+            break;
+          case 'TEACHER':
+            context.go('/teacher');
+            break;
+          case 'MANAGER':
+            context.go('/manager');
+            break;
+          default:
+            context.go('/login'); // إذا كان الدور غير معروف، اذهب للدخول
         }
-      },
-    );
+      } else {
+        // يوجد توكن ولكن لا توجد بيانات مستخدم، اذهب للدخول لتحديثها
+        context.go('/login');
+      }
+    } else {
+      // لا يوجد توكن، اذهب للدخول
+      context.go('/login');
+    }
   }
 
   @override
@@ -88,18 +107,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'K',
-                      style: TextStyle(
-                        fontSize: 60,
-                        color: Color(0xFF4A90E2),
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Center(
+                    child: Image.asset(
+                      'assets/images/kyan.png',
+                      height: 80,
+                      width: 80,
+                      fit: BoxFit.scaleDown,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                    ),
+                ) ,
                 const Text(
                   'Kyan',
                   style: TextStyle(
@@ -110,11 +126,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'منصة متكاملة لإدارة أعمالك',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
+                  '',
+                  style: TextStyle(fontSize: 16, color: Colors.white70),
                 ),
               ],
             ),
