@@ -12,11 +12,10 @@ class LoginScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // استخدام final للمتغيرات التي لا تتغير داخل build
     final emailController = TextEditingController(text: 'user@kyan.com');
     final passwordController = TextEditingController(text: 'Kyan@2024');
     final formKey = GlobalKey<FormState>();
-    final _obscurePasswordProvider = StateProvider<bool>((ref) => true);
+    final obscurePasswordProvider = StateProvider<bool>((ref) => true);
 
     // الاستماع لحالة المصادقة
     ref.listen(authStateProvider, (previous, next) {
@@ -109,7 +108,7 @@ class LoginScreen extends ConsumerWidget {
                       builder: (context, ref, child) {
                         // هذا الجزء خاص بإظهار/إخفاء كلمة المرور
                         // يمكنك استخدام state محلي إذا أردت، لكن هذا مثال
-                        final obscurePassword = ref.watch(_obscurePasswordProvider);
+                        final obscurePassword = ref.watch(obscurePasswordProvider);
                         return TextFormField(
                           controller: passwordController,
                           decoration: InputDecoration(
@@ -122,7 +121,7 @@ class LoginScreen extends ConsumerWidget {
                                     : Icons.visibility,
                               ),
                               onPressed: () {
-                                ref.read(_obscurePasswordProvider.notifier).state = !obscurePassword;
+                                ref.read(obscurePasswordProvider.notifier).state = !obscurePassword;
                               },
                             ),
                             border: OutlineInputBorder(
@@ -145,30 +144,31 @@ class LoginScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    authState.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: () {
-                              if (formKey.currentState!.validate()) {
-                                ref.read(authStateProvider.notifier).login(
-                                      emailController.text.trim(),
-                                      passwordController.text,
-                                    );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 50),
-                              backgroundColor: const Color(0xFF4A90E2),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text(
-                              'تسجيل الدخول',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
+                    authState.when(
+                      data: (_) => ElevatedButton(
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            ref.read(authStateProvider.notifier).login(
+                                  emailController.text.trim(),
+                                  passwordController.text,
+                                );
+                          }
+                        },
+                        child: const Text('تسجيل الدخول'),
+                      ),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => ElevatedButton(
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            ref.read(authStateProvider.notifier).login(
+                                  emailController.text.trim(),
+                                  passwordController.text,
+                                );
+                          }
+                        },
+                        child: const Text('تسجيل الدخول'),
+                      ),
+                    )
                   ],
                 ),
               ),

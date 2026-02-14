@@ -1,38 +1,38 @@
-// lib/data/datasources/auth_local_datasource.dart
+// auth_local_datasource.dart
+
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../core/constants/api_constants.dart';
+import '../../core/constants/storage_keys.dart';
 import '../../domain/entities/user.dart';
+abstract class AuthLocalDataSource {
+  Future<void> cacheUser(User user);
+  Future<User?> getCachedUser();
+  Future<String?> getAccessToken();
+  Future<String?> getRefreshToken();
+  Future<void> clearAuthData();
+  Future<bool> hasValidToken();
 
-class AuthLocalDataSource {
+  Future<void> cacheTokens(String accessToken, String refreshToken);
+  Future<int?> getTokenIssuedAt();
+}
+
+class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   final FlutterSecureStorage storage;
 
-  AuthLocalDataSource(this.storage);
+  AuthLocalDataSourceImpl(this.storage);
 
-  Future<void> cacheAuthResponse({
-    required String accessToken,
-    required String refreshToken,
-  }) async {
-    await storage.write(
-      key: ApiConstants.accessTokenKey,
-      value: accessToken,
-    );
-    await storage.write(
-      key: ApiConstants.refreshTokenKey,
-      value: refreshToken,
-    );
-  }
-
-  /// ✅ حفظ بيانات المستخدم
+  // ---------------- User ----------------
+  @override
   Future<void> cacheUser(User user) async {
     await storage.write(
-      key: ApiConstants.userDataKey,
+      key: StorageKeys.userData,
       value: jsonEncode(user.toJson()),
     );
   }
 
+  @override
   Future<User?> getCachedUser() async {
-    final userJson = await storage.read(key: ApiConstants.userDataKey);
+    final userJson = await storage.read(key: StorageKeys.userData);
     if (userJson == null) return null;
 
     try {
@@ -42,22 +42,55 @@ class AuthLocalDataSource {
     }
   }
 
-  Future<String?> getAccessToken() async {
-    return storage.read(key: ApiConstants.accessTokenKey);
+  // ---------------- Token ----------------
+  @override
+  Future<String?> getAccessToken() =>
+      storage.read(key: StorageKeys.accessToken);
+
+  @override
+  Future<String?> getRefreshToken() =>
+      storage.read(key: StorageKeys.refreshToken);
+
+  @override
+  Future<void> cacheTokens(
+      String accessToken,
+      String refreshToken,
+  ) async {
+    await storage.write(
+      key: StorageKeys.accessToken,
+      value: accessToken,
+    );
+
+    await storage.write(
+      key: StorageKeys.refreshToken,
+      value: refreshToken,
+    );
+
+    await storage.write(
+      key: StorageKeys.tokenIssuedAt,
+      value: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
   }
 
-  Future<String?> getRefreshToken() async {
-    return storage.read(key: ApiConstants.refreshTokenKey);
+  @override
+  Future<int?> getTokenIssuedAt() async {
+    final value = await storage.read(key: StorageKeys.tokenIssuedAt);
+    return value != null ? int.tryParse(value) : null;
   }
 
+  // ---------------- Utilities ----------------
+  @override
   Future<void> clearAuthData() async {
-    await storage.delete(key: ApiConstants.accessTokenKey);
-    await storage.delete(key: ApiConstants.refreshTokenKey);
-    await storage.delete(key: ApiConstants.userDataKey);
+    await storage.delete(key: StorageKeys.accessToken);
+    await storage.delete(key: StorageKeys.refreshToken);
+    await storage.delete(key: StorageKeys.userData);
+    await storage.delete(key: StorageKeys.tokenIssuedAt);
   }
 
+  @override
   Future<bool> hasValidToken() async {
     final token = await getAccessToken();
     return token != null && token.isNotEmpty;
   }
 }
+

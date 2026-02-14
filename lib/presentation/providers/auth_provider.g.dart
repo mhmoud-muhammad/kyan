@@ -70,8 +70,29 @@ final apiClientProvider = AutoDisposeProvider<ApiClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ApiClientRef = AutoDisposeProviderRef<ApiClient>;
+String _$tokenManagerHash() => r'e972c6042ae31602af15cae471e894cc349aa0c7';
+
+/// =====================
+/// Token Manager
+/// =====================
+///
+/// Copied from [tokenManager].
+@ProviderFor(tokenManager)
+final tokenManagerProvider = AutoDisposeProvider<TokenManager>.internal(
+  tokenManager,
+  name: r'tokenManagerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$tokenManagerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TokenManagerRef = AutoDisposeProviderRef<TokenManager>;
 String _$authRemoteDataSourceHash() =>
-    r'3c96ca463b5b1dea913cb8449165c8a749aa129c';
+    r'2f30b4c0257aaf499ec5f7618a043c5c87386671';
 
 /// =====================
 /// Remote DataSource
@@ -94,7 +115,7 @@ final authRemoteDataSourceProvider =
 // ignore: unused_element
 typedef AuthRemoteDataSourceRef = AutoDisposeProviderRef<AuthRemoteDataSource>;
 String _$authLocalDataSourceHash() =>
-    r'5505e206a9e9252d82333996a8d70aa99e3ecf2a';
+    r'82abfcced3adcbccc3d3394717a5b72af6c6c402';
 
 /// =====================
 /// Local DataSource
@@ -116,7 +137,7 @@ final authLocalDataSourceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AuthLocalDataSourceRef = AutoDisposeProviderRef<AuthLocalDataSource>;
-String _$authRepositoryHash() => r'317107b8f2b290abc8b45a69419314510a7e50fd';
+String _$authRepositoryHash() => r'f4cbf0c9d1bba8df81722482eae61b49b79ac520';
 
 /// =====================
 /// Repository

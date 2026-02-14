@@ -1,15 +1,13 @@
-// lib/presentation/providers/auth_provider.dart
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:myapp/data/datasources/auth_local_datasource.dart';
+import 'package:myapp/data/datasources/auth_remote_datasource.dart';
+import 'package:myapp/data/repositories/auth_repository_impl.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:dio/dio.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/network_info.dart';
-
-import '../../data/datasources/auth_remote_datasource.dart';
-import '../../data/datasources/auth_local_datasource.dart';
-import '../../data/repositories/auth_repository_impl.dart';
+import '../../core/network/token_manager.dart';
 
 import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_usecase.dart';
@@ -44,12 +42,22 @@ ApiClient apiClient(ApiClientRef ref) {
 }
 
 /// =====================
+/// Token Manager
+/// =====================
+@riverpod
+TokenManager tokenManager(TokenManagerRef ref) {
+  final storage = ref.watch(secureStorageProvider);
+  return TokenManager(storage);
+}
+
+/// =====================
 /// Remote DataSource
 /// =====================
 @riverpod
 AuthRemoteDataSource authRemoteDataSource(AuthRemoteDataSourceRef ref) {
   final client = ref.watch(apiClientProvider);
-  return AuthRemoteDataSource(client);
+  final tm = ref.watch(tokenManagerProvider);
+  return AuthRemoteDataSource(client, tm);
 }
 
 /// =====================
@@ -58,7 +66,7 @@ AuthRemoteDataSource authRemoteDataSource(AuthRemoteDataSourceRef ref) {
 @riverpod
 AuthLocalDataSource authLocalDataSource(AuthLocalDataSourceRef ref) {
   final storage = ref.watch(secureStorageProvider);
-  return AuthLocalDataSource(storage);
+  return AuthLocalDataSourceImpl(storage);
 }
 
 /// =====================
@@ -70,6 +78,7 @@ AuthRepositoryImpl authRepository(AuthRepositoryRef ref) {
     remoteDataSource: ref.watch(authRemoteDataSourceProvider),
     localDataSource: ref.watch(authLocalDataSourceProvider),
     networkInfo: ref.watch(networkInfoProvider),
+    tokenManager: ref.watch(tokenManagerProvider),
   );
 }
 
