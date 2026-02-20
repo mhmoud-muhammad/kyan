@@ -3,25 +3,27 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:myapp/core/constants/api_constants.dart';
-import 'package:myapp/core/errors/exceptions.dart';
+import '../constants/api_constants.dart';
 
 class ApiClient {
   final Dio _dio;
   final FlutterSecureStorage _storage;
-
   late final Dio _refreshDio;
 
+  // StreamController لإعلام الـ UI بضرورة تسجيل الخروج
+  final _logoutController = StreamController<void>.broadcast();
+  Stream<void> get onLogoutRequired => _logoutController.stream;
+
+  // للتحكم بعدم تكرار محاولات refresh في نفس الوقت
   bool _isRefreshing = false;
-  final List<Completer<void>> _refreshCompleters = [];
+  final List<Completer<void>> _refreshWaiters = [];
 
   ApiClient(this._dio, this._storage) {
     _init();
   }
 
-  Null get storage => null;
-
   void _init() {
+    // ضبط validateStatus ليقبل جميع الرموز حتى نتمكن من معالجة 401 يدويًا
     _dio.options = BaseOptions(
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(seconds: 30),
@@ -31,206 +33,210 @@ class ApiClient {
         'Accept': 'application/json',
         'Accept-Language': 'ar',
       },
+      validateStatus: (status) => true,
     );
 
-    // Dio خاص بالـ refresh (بدون interceptors)
     _refreshDio = Dio(
       BaseOptions(
-        baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        validateStatus: (status) => true,
       ),
     );
 
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: _onRequest,
-        onError: _onError,
+        onRequest: (options, handler) async {
+          final isAuthFreeEndpoint =
+              options.path.contains(ApiConstants.loginEndpoint) ||
+              options.path.contains(ApiConstants.registerEndpoint) ||
+              options.uri.path.contains(ApiConstants.refreshTokenEndpoint);
+          if (!isAuthFreeEndpoint) {
+            // التحقق الاستباقي من انتهاء التوكن
+            await _preemptiveTokenRefresh();
+
+            final token = await _storage.read(key: ApiConstants.accessTokenKey);
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          }
+
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          // التحقق من رمز الحالة غير الناجح
+          if (response.statusCode != null &&
+              (response.statusCode! < 200 || response.statusCode! >= 300)) {
+            // إذا كان 401، نرمي UnauthorizedException
+            if (response.statusCode == 401) {
+              throw DioError(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioErrorType.badResponse,
+                error: 'Unauthorized',
+              );
+            } else {
+              throw DioError(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioErrorType.badResponse,
+                error: 'Server error',
+              );
+            }
+          }
+          handler.next(response);
+        },
+        onError: (DioException error, handler) async {
+          final res = error.response;
+          final isAuthFreeEndpoint =
+              error.requestOptions.path.contains(ApiConstants.loginEndpoint) ||
+              error.requestOptions.path.contains(
+                ApiConstants.refreshTokenEndpoint,
+              );
+
+          // إذا كان الخطأ 401 وليس من endpoints المفتوحة
+          if (!isAuthFreeEndpoint && res?.statusCode == 401) {
+            // نحاول refresh
+            final success = await _refreshToken();
+
+            if (success) {
+              // إعادة إرسال الطلب الأصلي بالتوكن الجديد
+              final newToken = await _storage.read(
+                key: ApiConstants.accessTokenKey,
+              );
+              if (newToken != null) {
+                final opts = error.requestOptions;
+                opts.headers['Authorization'] = 'Bearer $newToken';
+                try {
+                  final response = await _dio.fetch(opts);
+                  return handler.resolve(response);
+                } catch (e) {
+                  // إذا فشلت إعادة الإرسال، نمرر الخطأ الأصلي
+                }
+              }
+            }
+          }
+
+          handler.next(error);
+        },
       ),
     );
   }
 
-  // ================= REQUEST =================
+  /// التحقق الاستباقي: إذا كان التوكن على وشك الانتهاء، نقوم بتحديثه
+  Future<void> _preemptiveTokenRefresh() async {
+    final issuedAtStr = await _storage.read(key: ApiConstants.tokenIssuedAtKey);
+    final token = await _storage.read(key: ApiConstants.accessTokenKey);
 
-  Future<void> _onRequest(
-      RequestOptions options, RequestInterceptorHandler handler) async {
-    final token =
-        await _storage.read(key: ApiConstants.accessTokenKey);
+    if (token == null || issuedAtStr == null) return;
 
-    if (token != null) {
-      options.headers['Authorization'] = 'Bearer $token';
+    final issuedAt = DateTime.fromMillisecondsSinceEpoch(
+      int.parse(issuedAtStr),
+    );
+    final expiresAt = issuedAt.add(
+      Duration(minutes: ApiConstants.tokenLifetimeMinutes),
+    );
+    final remaining = expiresAt.difference(DateTime.now());
+
+    if (remaining <= const Duration(minutes: 2)) {
+      await _refreshToken();
     }
-
-    handler.next(options);
   }
 
-  // ================= ERROR =================
-
-  Future<void> _onError(
-      DioException error, ErrorInterceptorHandler handler) async {
-    if (error.response?.statusCode == 401 &&
-        !_isAuthEndpoint(error.requestOptions.path)) {
-      try {
-        await _handleTokenRefresh();
-        final response = await _retry(error.requestOptions);
-        return handler.resolve(response);
-      } catch (_) {
-        await _storage.deleteAll();
-        return handler.reject(error);
-      }
-    }
-
-    handler.next(error);
-  }
-
-  bool _isAuthEndpoint(String path) {
-    return path.contains(ApiConstants.loginEndpoint) ||
-        path.contains(ApiConstants.refreshTokenEndpoint);
-  }
-
-  // ================= REFRESH LOGIC =================
-
-  Future<void> _handleTokenRefresh() async {
+  /// محاولة تجديد التوكن باستخدام refresh token
+  /// تعيد true إذا نجحت، false إذا فشلت
+  Future<bool> _refreshToken() async {
+    // منع التوازي
     if (_isRefreshing) {
       final completer = Completer<void>();
-      _refreshCompleters.add(completer);
-      return completer.future;
+      _refreshWaiters.add(completer);
+      try {
+        await completer.future;
+        return true; // إذا نجح الآخرون، نعتبر النجاح
+      } catch (_) {
+        return false;
+      }
     }
 
     _isRefreshing = true;
-
     try {
-      await _refreshToken();
-      for (final completer in _refreshCompleters) {
-        completer.complete();
+      final refreshToken = await _storage.read(
+        key: ApiConstants.refreshTokenKey,
+      );
+      if (refreshToken == null) {
+        await _storage.deleteAll();
+        _logoutController.add(null);
+        return false;
       }
-      _refreshCompleters.clear();
+
+      final response = await _refreshDio.post(
+        ApiConstants.refUrl,
+        data: {'refresh': refreshToken},
+      );
+
+     if (response.statusCode == 200) {
+        final newAccess = response.data['access'];
+        final newRefresh = response.data['refresh'];
+
+        await _storage.write(
+          key: ApiConstants.accessTokenKey,
+          value: newAccess,
+        );
+
+        await _storage.write(
+          key: ApiConstants.refreshTokenKey,
+          value: newRefresh,   // ✅ الصحيح
+        );
+
+        await _storage.write(
+          key: ApiConstants.tokenIssuedAtKey,
+          value: DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+
+        for (final waiter in _refreshWaiters) {
+          waiter.complete();
+        }
+        _refreshWaiters.clear();
+
+        return true;
+      } else {
+        // أي استجابة أخرى تعني فشل التحديث (مثلاً 401)
+        await _storage.deleteAll();
+        _logoutController.add(null);
+        for (final waiter in _refreshWaiters) {
+          waiter.completeError('Refresh failed');
+        }
+        _refreshWaiters.clear();
+        return false;
+      }
     } catch (e) {
-      for (final completer in _refreshCompleters) {
-        completer.completeError(e);
+      await _storage.deleteAll();
+      _logoutController.add(null);
+      for (final waiter in _refreshWaiters) {
+        waiter.completeError(e);
       }
-      _refreshCompleters.clear();
-      rethrow;
+      _refreshWaiters.clear();
+      return false;
     } finally {
       _isRefreshing = false;
     }
   }
 
-  Future<void> _refreshToken() async {
-    final refreshToken =
-        await _storage.read(key: ApiConstants.refreshTokenKey);
+  // ================= HTTP Helpers =================
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) =>
+      _dio.get(path, queryParameters: queryParameters);
 
-    if (refreshToken == null) {
-      throw UnauthorizedException();
-    }
+  Future<Response> post(String path, {dynamic data}) =>
+      _dio.post(path, data: data);
 
-    final response = await _refreshDio.post(
-      ApiConstants.refreshTokenEndpoint,
-      data: {'refreshToken': refreshToken},
-    );
+  Future<Response> put(String path, {dynamic data}) =>
+      _dio.put(path, data: data);
 
-    final data = response.data;
-    if (data is! Map || data['accessToken'] == null) {
-      throw UnauthorizedException();
-    }
+  Future<Response> delete(String path) => _dio.delete(path);
 
-    await _storage.write(
-      key: ApiConstants.accessTokenKey,
-      value: data['accessToken'].toString(),
-    );
-  }
-
-  // ================= RETRY =================
-
-  Future<Response<dynamic>> _retry(RequestOptions requestOptions) async {
-    final options = Options(
-      method: requestOptions.method,
-      headers: requestOptions.headers,
-    );
-
-    return _dio.request<dynamic>(
-      requestOptions.path,
-      data: requestOptions.data,
-      queryParameters: requestOptions.queryParameters,
-      options: options,
-    );
-  }
-
-  // ================= HTTP METHODS =================
-
-  Future<Response> get(String path,
-      {Map<String, dynamic>? queryParameters}) async {
-    try {
-      return await _dio.get(path, queryParameters: queryParameters);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<Response> post(String path, {dynamic data}) async {
-    try {
-      return await _dio.post(path, data: data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<Response> put(String path, {dynamic data}) async {
-    try {
-      return await _dio.put(path, data: data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<Response> delete(String path) async {
-    try {
-      return await _dio.delete(path);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // ================= ERROR HANDLER =================
-
-  Exception _handleError(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.receiveTimeout:
-      case DioExceptionType.sendTimeout:
-        return NetworkException('اتصال الإنترنت ضعيف');
-
-      case DioExceptionType.connectionError:
-        return NetworkException('لا يوجد اتصال بالإنترنت');
-
-      case DioExceptionType.badResponse:
-        final code = error.response?.statusCode;
-        final data = error.response?.data;
-
-        String message = 'حدث خطأ في الخادم';
-
-        if (data is Map && data['message'] != null) {
-          message = data['message'].toString();
-        }
-
-        if (code == 401) return UnauthorizedException(message);
-        if (code == 403) return KyanException('غير مصرح لك');
-        if (code == 404) return KyanException('المورد غير موجود');
-
-        if (code == 422 && data is Map && data['errors'] is Map) {
-          final errors = Map<String, String>.from(
-            (data['errors'] as Map)
-                .map((k, v) => MapEntry(k.toString(), v.toString())),
-          );
-          return ValidationException(errors);
-        }
-
-        if (code == 500) return ServerException('خطأ داخلي في الخادم');
-
-        return ServerException(message, code: code);
-
-      default:
-        return ServerException('حدث خطأ غير متوقع');
-    }
+  void dispose() {
+    _logoutController.close();
   }
 }

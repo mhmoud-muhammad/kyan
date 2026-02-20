@@ -1,5 +1,5 @@
 
-// API Constants'
+// lib/core/errors/exceptions.dart
 class KyanException implements Exception {
   final String message;
   final int? code;

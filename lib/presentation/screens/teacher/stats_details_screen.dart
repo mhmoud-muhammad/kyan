@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/student.dart';
-import 'package:myapp/presentation/providers/teacher_provider.dart';
+import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
 
 class StatsDetailsScreen extends ConsumerWidget {
   const StatsDetailsScreen({super.key});
@@ -66,7 +66,7 @@ class StatsDetailsScreen extends ConsumerWidget {
                         );
                       },
                       loading: () => const CircularProgressIndicator(),
-                      error: (_, __) => Text('0'),
+                      error: (_, _) => Text('0'),
                     ),
                   ],
                 ),

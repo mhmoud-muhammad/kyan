@@ -1,4 +1,5 @@
-//lib/data/repositories/auth_repository_impl.dart
+// lib/data/repositories/auth_repository_impl.dart
+
 import 'package:dartz/dartz.dart';
 import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/network/token_manager.dart';
@@ -14,102 +15,64 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final AuthLocalDataSource localDataSource;
   final NetworkInfo networkInfo;
-  final TokenManager tokenManager;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
-    required this.networkInfo,
-    required this.tokenManager,
+    required this.networkInfo, required TokenManager tokenManager,
   });
 
   /// 🔹 تسجيل الدخول
-  @override
-  Future<Either<Failure, AuthResponse>> login({
-    required String phone,
-    required String password,
-  }) async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
-
-    try {
-      final authResponse = await remoteDataSource.login(phone, password);
-
-      // حفظ التوكن ووقت الإصدار
-      await localDataSource.cacheTokens(
-        authResponse.accessToken,
-        authResponse.refreshToken,
-      );
-
-      // حفظ بيانات المستخدم
-      await localDataSource.cacheUser(authResponse.user);
-
-      // تحديث TokenManager
-      await tokenManager.markTokenRefreshed();
-
-      return Right(authResponse);
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+@override
+Future<Either<Failure, AuthResponse>> login({
+  required String phone,
+  required String password,
+}) async {
+  if (!await networkInfo.isConnected) {
+    return Left(NetworkFailure());
   }
 
-  /// 🔹 تسجيل مستخدم جديد
-  @override
-  Future<Either<Failure, AuthResponse>> register({
-    required String password,
-    required String name,
-    String? phone,
-  }) async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
+  try {
+    // 1️⃣ Login (يحفظ access + refresh داخليًا)
+    final authResponse = await remoteDataSource.login(phone, password);
 
-    try {
-      final authResponse = await remoteDataSource.register(
-        password: password,
-        name: name,
-        phone: phone,
-      );
+    // 2️⃣ بناء User من البيانات المتاحة (role)
+    final user = User(role: authResponse.role, id: '', name: '', phone: '');
 
-      await localDataSource.cacheTokens(
-        authResponse.accessToken,
-        authResponse.refreshToken,
-      );
-      await localDataSource.cacheUser(authResponse.user);
-      await tokenManager.markTokenRefreshed();
+    // 3️⃣ تخزين User محليًا
+    await localDataSource.cacheUser(user);
 
-      return Right(authResponse);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
+    return Right(authResponse);
+
+  } on UnauthorizedException {
+    return Left(
+      UnauthorizedFailure('بيانات الدخول غير صحيحة'),
+    );
+  } on ServerException catch (e) {
+    return Left(ServerFailure(e.message));
+  } catch (_) {
+    return Left(
+      ServerFailure('حدث خطأ غير متوقع'),
+    );
   }
+}
 
-  /// 🔹 استرجاع بيانات المستخدم الحالي مع Proactive refresh
+  /// 🔹 استرجاع بيانات المستخدم الحالي (مع Proactive Refresh)
   @override
   Future<Either<Failure, User>> getCurrentUser() async {
     try {
+      // 1️⃣ أولوية للكاش
       final cachedUser = await localDataSource.getCachedUser();
-      if (cachedUser != null) return Right(cachedUser);
-
-      if (!await networkInfo.isConnected) return Left(CacheFailure());
-
-      // Proactive refresh
-      if (await tokenManager.shouldRefresh()) {
-        await tokenManager.runRefresh(() async {
-          final refreshToken = await localDataSource.getRefreshToken();
-          if (refreshToken != null) {
-            final newAccessToken =
-                await remoteDataSource.refreshToken(refreshToken);
-            await localDataSource.cacheTokens(newAccessToken, refreshToken);
-            await tokenManager.markTokenRefreshed();
-          }
-        });
+      if (cachedUser != null) {
+        return Right(cachedUser);
       }
 
-      // جلب بيانات المستخدم من API
+      // 2️⃣ تحقق من الاتصال
+      if (!await networkInfo.isConnected) {
+        return Left(NetworkFailure());
+      }
+
+      // 3️⃣ جلب المستخدم من الـ API
       final userData = await remoteDataSource.getCurrentUser();
       final user = User.fromJson(userData);
 
@@ -129,8 +92,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> logout() async {
     try {
       if (await networkInfo.isConnected) {
-        await remoteDataSource.logout();
+        final accessToken = await localDataSource.getAccessToken();
+        await remoteDataSource.logout(accessToken!);
       }
+
       await localDataSource.clearAuthData();
       return const Right(null);
     } catch (e) {
@@ -142,14 +107,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, bool>> isAuthenticated() async {
     try {
-      final hasToken = await localDataSource.hasValidToken();
-      return Right(hasToken);
+      final hasValidToken = await localDataSource.hasValidToken();
+      return Right(hasValidToken);
     } catch (_) {
       return const Right(false);
     }
   }
 
-  /// 🔹 تحديث التوكن
+  /// 🔹 تحديث التوكن باستخدام Refresh Token
   @override
   Future<Either<Failure, String>> refreshToken() async {
     try {
@@ -161,12 +126,16 @@ class AuthRepositoryImpl implements AuthRepository {
       final newAccessToken =
           await remoteDataSource.refreshToken(refreshToken);
 
-      await localDataSource.cacheTokens(newAccessToken, refreshToken);
-      await tokenManager.markTokenRefreshed();
+      await localDataSource.cacheTokens(
+        newAccessToken as String,
+        refreshToken,
+      );
 
-      return Right(newAccessToken);
+      return Right(newAccessToken as String);
     } on UnauthorizedException catch (e) {
       return Left(UnauthorizedFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

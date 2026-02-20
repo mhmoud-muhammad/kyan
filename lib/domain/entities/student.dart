@@ -1,10 +1,10 @@
+// lib/domain/entities/student.dart
 import 'package:json_annotation/json_annotation.dart';
 
 part 'student.g.dart';
 
-// ... (enum AttendanceStatus يبقى كما هو) ...
 enum AttendanceStatus {
-  @JsonValue('PRESENT') // API يستخدم حروف كبيرة
+  @JsonValue('PRESENT') 
   present,
   @JsonValue('ABSENT')
   absent,

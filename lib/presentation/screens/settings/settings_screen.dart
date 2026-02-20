@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
-import 'package:myapp/presentation/providers/auth_provider.dart';
+import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -61,7 +61,7 @@ class SettingsScreen extends ConsumerWidget {
               trailing: Switch(
                 value: false,
                 onChanged: (val) {},
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
               ),
             ),
             _buildSettingItem(

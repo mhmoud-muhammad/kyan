@@ -1,3 +1,4 @@
+// lib/domain/entities/active_request.dart
 import 'package:json_annotation/json_annotation.dart';
 
 part 'active_request.g.dart';

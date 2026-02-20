@@ -11,7 +11,6 @@ export 'errors/failures.dart';
 
 // Network
 export 'network/api_client.dart';
-export 'network/dummy_data.dart';
 
 // Router
 export 'router/app_router.dart';
@@ -24,4 +23,3 @@ export 'theme/text_styles.dart';
 // Utils
 export 'utils/validators.dart';
 export 'utils/date_formatter.dart';
-export 'utils/string_utils.dart';

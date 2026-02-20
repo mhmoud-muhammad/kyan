@@ -44,7 +44,7 @@ final teacherRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef TeacherRepositoryRef = AutoDisposeProviderRef<TeacherRepository>;
-String _$dashboardStatsHash() => r'5652ffd66e1dbd05fc570963345a6c32d134bf29';
+String _$dashboardStatsHash() => r'1cfded847f599d571b9f046985a3867ba37e8f76';
 
 /// See also [dashboardStats].
 @ProviderFor(dashboardStats)
@@ -62,7 +62,7 @@ final dashboardStatsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef DashboardStatsRef = AutoDisposeFutureProviderRef<TeacherDashboardStats>;
-String _$activeRequestsHash() => r'b950529b0aa5c25e0d5e7e9d74d6547fb99d641a';
+String _$activeRequestsHash() => r'4224accba768148ec3cbaca3909ddfd3c43aeabe';
 
 /// See also [activeRequests].
 @ProviderFor(activeRequests)
@@ -80,7 +80,7 @@ final activeRequestsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ActiveRequestsRef = AutoDisposeFutureProviderRef<List<ActiveRequest>>;
-String _$studentsByStatusHash() => r'a5d742c7522775b7fd4ef35ce8599c0af2517eae';
+String _$studentsByStatusHash() => r'f9911fed3136be0f73be368109a315496e69ca20';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -222,5 +222,43 @@ class _StudentsByStatusProviderElement
   String get statusType => (origin as StudentsByStatusProvider).statusType;
 }
 
+String _$webSocketListenerHash() => r'ab3673b4e995edd327dcc746796aeec5082d1091';
+
+/// See also [webSocketListener].
+@ProviderFor(webSocketListener)
+final webSocketListenerProvider = AutoDisposeProvider<void>.internal(
+  webSocketListener,
+  name: r'webSocketListenerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$webSocketListenerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef WebSocketListenerRef = AutoDisposeProviderRef<void>;
+String _$webSocketNotificationsHash() =>
+    r'168fca983f9d87959b88915978e172a30ff18054';
+
+/// See also [WebSocketNotifications].
+@ProviderFor(WebSocketNotifications)
+final webSocketNotificationsProvider =
+    AutoDisposeNotifierProvider<
+      WebSocketNotifications,
+      List<Map<String, dynamic>>
+    >.internal(
+      WebSocketNotifications.new,
+      name: r'webSocketNotificationsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$webSocketNotificationsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$WebSocketNotifications =
+    AutoDisposeNotifier<List<Map<String, dynamic>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

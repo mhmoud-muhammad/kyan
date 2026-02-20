@@ -1,3 +1,4 @@
+// lib/domain/entities/school.dart
 import 'package:json_annotation/json_annotation.dart';
 
 part 'school.g.dart';

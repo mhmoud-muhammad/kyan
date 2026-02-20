@@ -2,92 +2,83 @@
 import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/network/token_manager.dart';
 import '../../core/network/api_client.dart';
-import '../../core/network/dummy_data.dart';
 import '../../core/constants/api_constants.dart';
 import '../../domain/entities/auth_response.dart';
 
 class AuthRemoteDataSource {
   final ApiClient apiClient;
-final TokenManager tokenManager;
+  final TokenManager tokenManager;
 
   AuthRemoteDataSource(this.apiClient, this.tokenManager);
 
   /// 🔹 تسجيل الدخول
   Future<AuthResponse> login(String phone, String password) async {
-    if (ApiConstants.useDummyData) {
-      await Future.delayed(const Duration(seconds: 1));
-      final dummyResponse = DummyData.authenticate(phone, password);
-      print('dummyResponse: $dummyResponse');
-
-      if (dummyResponse != null) return AuthResponse.fromJson(dummyResponse);
-      throw ServerException('Invalid phone or password');
-    }
-
     final response = await apiClient.post(
       ApiConstants.loginEndpoint,
       data: {'phone': phone, 'password': password},
     );
 
-    return AuthResponse.fromJson(response.data);
-  }
+    // التحقق من رمز الحالة
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      // محاولة استخراج رسالة الخطأ من الاستجابة
+      String message = 'فشل تسجيل الدخول';
+      if (response.data is Map && response.data['message'] != null) {
+        message = response.data['message'];
+      } else if (response.data is String) {
+        message = response.data;
+      }
 
-  /// 🔹 تسجيل مستخدم جديد
-  Future<AuthResponse> register({
-    required String password,
-    required String name,
-    String? phone,
-  }) async {
-    if (ApiConstants.useDummyData) {
-      await Future.delayed(const Duration(seconds: 1));
-      final dummyResponse = DummyData.createDummyUser(
-        name: name,
-        phone: phone,
-      );
-      return AuthResponse.fromJson(dummyResponse);
+      // رمي استثناء مناسب حسب رمز الحالة
+      if (response.statusCode == 401) {
+        throw UnauthorizedException(message);
+      } else {
+        throw ServerException(message, code: response.statusCode);
+      }
     }
 
-    final response = await apiClient.post(
-      ApiConstants.registerEndpoint,
-      data: {
-        'password': password,
-        'name': name,
-        'phone': phone,
-      },
+    // إذا كان الرد ناجحًا، نقوم بتحويل البيانات
+    final authResponse = AuthResponse.fromJson(response.data);
+
+    // حفظ التوكنات
+    await tokenManager.saveTokens(
+      authResponse.accessToken,
+      authResponse.refreshToken,
     );
 
-    return AuthResponse.fromJson(response.data);
+    return authResponse;
   }
 
-  /// 🔹 استرجاع بيانات المستخدم الحالي
-  Future<Map<String, dynamic>> getCurrentUser() async {
-    if (ApiConstants.useDummyData) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      return DummyData.dummyParentUser; // تأكد من أن هذا يحتوي على بيانات المستخدم الوهمية المناسبة
-    }
+  Future<AuthResponse> refreshToken(String refreshToken) async {
+    final response = await apiClient.post(
+      ApiConstants.refreshTokenEndpoint,
+      data: {'refresh': refreshToken},
+    );
 
+    final authResponse = AuthResponse.fromJson(response.data);
+
+    // حفظ التوكنات الجديدة وتحديث وقت الإصدار
+    await tokenManager.saveTokens(
+      authResponse.accessToken,
+      authResponse.refreshToken,
+    );
+    await tokenManager.markTokenIssuedNow();
+
+    return authResponse;
+  }
+
+  /// 🔹 المستخدم الحالي
+  Future<Map<String, dynamic>> getCurrentUser() async {
     final response = await apiClient.get(ApiConstants.userEndpoint);
     return response.data;
   }
 
-  /// 🔹 دالة عامة لتحديث الـ token (Refresh)
-  Future<String> refreshToken(String refreshToken) async {
-    if (ApiConstants.useDummyData) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.kyan_dummy_token_refreshed_2024';
-    }
-
-    final response = await apiClient.post(
-      ApiConstants.refreshTokenEndpoint,
-      data: {'refreshToken': refreshToken},
+  /// 🔹 تسجيل الخروج
+  Future<void> logout(String refreshToken) async {
+    await apiClient.post(
+      ApiConstants.logoutEndpoint,
+      data: {'refresh': refreshToken},
     );
 
-    return response.data['accessToken'];
-  }
-
-  /// 🔹 تسجيل الخروج
-  Future<void> logout() async {
-    if (ApiConstants.useDummyData) return;
-
-    await apiClient.post(ApiConstants.logoutEndpoint);
+    await tokenManager.clearTokens();
   }
 }

@@ -2,14 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/student.dart';
-import 'package:myapp/presentation/providers/teacher_provider.dart';
+import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
 
 class StudentsListScreen extends ConsumerWidget {
-  final String type; // total, present, requested, atGate
+  final String type; // present, requested, atGate, delivered
   final String title;
   final Color color;
 
@@ -22,9 +21,9 @@ class StudentsListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // هنا يمكنك جلب الطلاب حسب النوع من Provider مخصص
-    // مثال: final studentsAsync = ref.watch(studentsByTypeProvider(type));
-    
+    // الأنواع المدعومة: present, requested, atGate, delivered
+    final studentsAsync = ref.watch(studentsByStatusProvider(type));
+
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
@@ -37,84 +36,104 @@ class StudentsListScreen extends ConsumerWidget {
           onPressed: () => context.pop(),
         ),
       ),
-      body: Column(
-        children: [
-          // Header إحصائي
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
-            child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(studentsByStatusProvider(type));
+        },
+        color: AppColors.primary,
+        child: studentsAsync.when(
+          data: (students) {
+            return Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _getIconForType(type),
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '25', // هنا الرقم الإجمالي
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
+                _buildHeader(context, students.length),
+                Expanded(
+                  child: students.isEmpty
+                      ? _buildEmptyState()
+                      : _buildStudentsList(students),
                 ),
               ],
-            ),
-          ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => _buildErrorState(err.toString()),
+        ),
+      ),
+    );
+  }
 
-          // قائمة الطلاب
-          Expanded(
-            child: _buildStudentsList(),
+  Widget _buildHeader(BuildContext context, int count) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(_getIconForType(type), color: Colors.white, size: 40),
+              const SizedBox(width: 12),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStudentsList() {
-    // هذه قائمة تجريبية - استبدلها ببيانات حقيقية من Provider
+  Widget _buildStudentsList(List<Student> students) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: 10, // عدد الطلاب
+      itemCount: students.length,
       itemBuilder: (context, index) {
-        return _buildStudentCard(
-          name: 'محمد أحمد $index',
-          className: 'الصف الخامس',
-          parentName: 'أحمد محمد',
-          time: DateTime.now(),
-        );
+        return _buildStudentCard(students[index]);
       },
     );
   }
 
-  Widget _buildStudentCard({
-    required String name,
-    required String className,
-    required String parentName,
-    required DateTime time,
-  }) {
+  Widget _buildStudentCard(Student student) {
+    // نحدد لون الحالة بناءً على status الطالب
+    Color statusColor;
+    switch (student.status) {
+      case AttendanceStatus.present:
+        statusColor = AppColors.success;
+        break;
+      case AttendanceStatus.requested:
+        statusColor = const Color(0xFFFF8C42);
+        break;
+      case AttendanceStatus.at_gate:
+        statusColor = AppColors.primaryDark;
+        break;
+      case AttendanceStatus.delivered:
+      case AttendanceStatus.completed:
+        statusColor = Colors.green;
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -131,17 +150,17 @@ class StudentsListScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // صورة الطالب
+          // صورة الطالب (أيقونة)
           Container(
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: statusColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               Icons.child_care_rounded,
-              color: color,
+              color: statusColor,
               size: 30,
             ),
           ),
@@ -153,99 +172,149 @@ class StudentsListScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  student.name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.class_rounded,
-                      size: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      className,
-                      style: TextStyle(
-                        fontSize: 13,
+                if (student.schoolName != null) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.school_rounded,
+                        size: 14,
                         color: Colors.grey.shade600,
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 4),
+                      Text(
+                        student.schoolName!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.person_outline_rounded,
-                      size: 14,
-                      color: Colors.grey.shade600,
+                // عرض الحالة
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getStatusText(student.status),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: statusColor,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      parentName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-
-          // الوقت
-          Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 12,
-                      color: color,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      DateFormat('hh:mm a').format(time),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: color,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inbox_rounded,
+            size: 60,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'لا يوجد طلاب في هذه الفئة',
+            style: AppTextStyles.body.copyWith(
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            size: 48,
+            color: AppColors.error,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'خطأ في تحميل الطلاب',
+            style: TextStyle(color: AppColors.error),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            error,
+            style: AppTextStyles.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              // إعادة المحاولة عن طريق إبطال الـ provider
+             // ref.invalidate(studentsByStatusProvider(type));
+            },
+            child: const Text('إعادة المحاولة'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getStatusText(AttendanceStatus status) {
+    switch (status) {
+      case AttendanceStatus.present:
+        return 'حاضر';
+      case AttendanceStatus.absent:
+        return 'غائب';
+      case AttendanceStatus.late:
+        return 'متأخر';
+      case AttendanceStatus.requested:
+        return 'قيد الطلب';
+      case AttendanceStatus.at_gate:
+        return 'عند البوابة';
+      case AttendanceStatus.delivered:
+        return 'تم التسليم';
+      case AttendanceStatus.completed:
+        return 'مكتمل';
+      default:
+        return 'غير معروف';
+    }
+  }
+
   IconData _getIconForType(String type) {
     switch (type) {
-      case 'total':
-        return Icons.groups_rounded;
       case 'present':
         return Icons.check_circle_rounded;
       case 'requested':
         return Icons.send_rounded;
       case 'atGate':
         return Icons.meeting_room_rounded;
+      case 'delivered':
+        return Icons.check_circle_outline_rounded;
       default:
-        return Icons.bar_chart_rounded;
+        return Icons.groups_rounded; // total أو أي نوع آخر
     }
   }
 }

@@ -1,3 +1,4 @@
+// lib/domain/entities/teacher_dashboard_stats.dart
 import 'package:json_annotation/json_annotation.dart';
 
 part 'teacher_dashboard_stats.g.dart';

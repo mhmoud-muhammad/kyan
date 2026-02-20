@@ -1,9 +1,9 @@
 // lib/core/utils/validators.dart
 class Validators {
   static String? phone(String? value) {
-    if (value == null || value.isEmpty) return 'رقم الهاتف مطلوب';
-    final regex = RegExp(r'^[0-9]{10}$');
-    if (!regex.hasMatch(value)) return 'رقم الهاتف غير صالح';
+    // if (value == null || value.isEmpty) return 'رقم الهاتف مطلوب';
+    // final regex = RegExp(r'^[0-9]{10}$');
+    // if (!regex.hasMatch(value)) return 'رقم الهاتف غير صالح';
     return null;
   }
 

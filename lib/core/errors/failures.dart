@@ -1,4 +1,4 @@
-
+// lib/core/errors/failures.dart
 class Failure {
   final String message;
   final int? code;
@@ -38,4 +38,10 @@ class ValidationFailure extends Failure {
 /// فشل التخزين المؤقت (Cache)
 class CacheFailure extends Failure {
   CacheFailure([super.message = 'حدث خطأ في التخزين المؤقت']);
+}
+
+
+
+class AuthFailure extends Failure {
+  AuthFailure([super.message = 'خطأ في بيانات الدخول']);
 }

@@ -121,7 +121,7 @@ final mySchoolsProvider = AutoDisposeFutureProvider<List<School>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MySchoolsRef = AutoDisposeFutureProviderRef<List<School>>;
-String _$studentsBySchoolHash() => r'122295c0b8b63c05bb42fd4de49054fdf86ba803';
+String _$studentsBySchoolHash() => r'd0f03d40e864074d3552c6137aced82fafc4ab75';
 
 /// See also [studentsBySchool].
 @ProviderFor(studentsBySchool)
@@ -139,7 +139,173 @@ final studentsBySchoolProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef StudentsBySchoolRef = AutoDisposeFutureProviderRef<List<Student>>;
-String _$pickupRequestHash() => r'328fca09cba1cc194c9e50019df00d5aa0dfa681';
+String _$pickupRequestForStudentHash() =>
+    r'6b7303fdd63ca66e9e2c5ed6376c9d770af7ca5f';
+
+/// Copied from Dart SDK
+class _SystemHash {
+  _SystemHash._();
+
+  static int combine(int hash, int value) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + value);
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
+    return hash ^ (hash >> 6);
+  }
+
+  static int finish(int hash) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
+    // ignore: parameter_assignments
+    hash = hash ^ (hash >> 11);
+    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  }
+}
+
+abstract class _$PickupRequestForStudent
+    extends BuildlessAutoDisposeNotifier<AsyncValue<void>> {
+  late final String studentId;
+
+  AsyncValue<void> build(String studentId);
+}
+
+/// See also [PickupRequestForStudent].
+@ProviderFor(PickupRequestForStudent)
+const pickupRequestForStudentProvider = PickupRequestForStudentFamily();
+
+/// See also [PickupRequestForStudent].
+class PickupRequestForStudentFamily extends Family<AsyncValue<void>> {
+  /// See also [PickupRequestForStudent].
+  const PickupRequestForStudentFamily();
+
+  /// See also [PickupRequestForStudent].
+  PickupRequestForStudentProvider call(String studentId) {
+    return PickupRequestForStudentProvider(studentId);
+  }
+
+  @override
+  PickupRequestForStudentProvider getProviderOverride(
+    covariant PickupRequestForStudentProvider provider,
+  ) {
+    return call(provider.studentId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'pickupRequestForStudentProvider';
+}
+
+/// See also [PickupRequestForStudent].
+class PickupRequestForStudentProvider
+    extends
+        AutoDisposeNotifierProviderImpl<
+          PickupRequestForStudent,
+          AsyncValue<void>
+        > {
+  /// See also [PickupRequestForStudent].
+  PickupRequestForStudentProvider(String studentId)
+    : this._internal(
+        () => PickupRequestForStudent()..studentId = studentId,
+        from: pickupRequestForStudentProvider,
+        name: r'pickupRequestForStudentProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$pickupRequestForStudentHash,
+        dependencies: PickupRequestForStudentFamily._dependencies,
+        allTransitiveDependencies:
+            PickupRequestForStudentFamily._allTransitiveDependencies,
+        studentId: studentId,
+      );
+
+  PickupRequestForStudentProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.studentId,
+  }) : super.internal();
+
+  final String studentId;
+
+  @override
+  AsyncValue<void> runNotifierBuild(
+    covariant PickupRequestForStudent notifier,
+  ) {
+    return notifier.build(studentId);
+  }
+
+  @override
+  Override overrideWith(PickupRequestForStudent Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: PickupRequestForStudentProvider._internal(
+        () => create()..studentId = studentId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        studentId: studentId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeNotifierProviderElement<PickupRequestForStudent, AsyncValue<void>>
+  createElement() {
+    return _PickupRequestForStudentProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is PickupRequestForStudentProvider &&
+        other.studentId == studentId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, studentId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin PickupRequestForStudentRef
+    on AutoDisposeNotifierProviderRef<AsyncValue<void>> {
+  /// The parameter `studentId` of this provider.
+  String get studentId;
+}
+
+class _PickupRequestForStudentProviderElement
+    extends
+        AutoDisposeNotifierProviderElement<
+          PickupRequestForStudent,
+          AsyncValue<void>
+        >
+    with PickupRequestForStudentRef {
+  _PickupRequestForStudentProviderElement(super.provider);
+
+  @override
+  String get studentId => (origin as PickupRequestForStudentProvider).studentId;
+}
+
+String _$pickupRequestHash() => r'd71488f183fa0391011dcba75799c54645d65a70';
 
 /// See also [PickupRequest].
 @ProviderFor(PickupRequest)

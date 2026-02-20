@@ -1,129 +1,61 @@
+// lib/presentation/screens/teacher/teacher_home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:myapp/core/services/websocket_service.dart';
+import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/active_request.dart';
 import 'package:myapp/domain/entities/teacher_dashboard_stats.dart';
 import 'package:myapp/domain/entities/user.dart';
-import 'package:myapp/presentation/providers/auth_provider.dart';
-import 'package:myapp/presentation/providers/teacher_provider.dart';
-import 'package:myapp/core/theme/app_colors.dart';
+import 'package:myapp/presentation/providers/auth/auth_provider.dart';
+import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
 
-class TeacherHomeScreen extends ConsumerWidget {
+class TeacherHomeScreen extends ConsumerStatefulWidget {
   const TeacherHomeScreen({super.key});
+
+  @override
+  ConsumerState<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
+}
+
+class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
+  bool _wsInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _connectWebSocket();
+    });
+  }
+
+  Future<void> _connectWebSocket() async {
+    if (_wsInitialized) return;
+    _wsInitialized = true;
+    try {
+      // بدء اتصال WebSocket
+      await ref.read(websocketServiceProvider).connectTeacher();
+      // تفعيل مستمع الإشعارات
+      ref.read(webSocketListenerProvider);
+    } catch (e) {
+      print('❌ فشل الاتصال بـ WebSocket: $e');
+    }
+  }
 
   Future<void> _refreshData(WidgetRef ref) async {
     ref.invalidate(dashboardStatsProvider);
     ref.invalidate(activeRequestsProvider);
   }
 
-  void _showNotificationsPanel(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled:
-          true, // للسماح للقائمة بأخذ مساحة أكبر إذا زادت الإشعارات
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height:
-            MediaQuery.of(context).size.height *
-            0.75, // عرض القائمة بنسبة 75% من الشاشة
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: Column(
-          children: [
-            // شريط السحب العلوي للتجميل
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'التنبيهات',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  TextButton(
-                    onPressed: () {}, // دالة مسح الكل مثلاً
-                    child: const Text('تحديد الكل كمقروء'),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(),
-            // قائمة الإشعارات
-            Expanded(
-              child: ListView.separated(
-                itemCount: 5, // استبدلها بعدد الإشعارات الحقيقي من الـ Provider
-                padding: const EdgeInsets.all(15),
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) => _buildNotificationItem(index),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ويدجت فرعي لتصميم شكل الإشعار الواحد
-  Widget _buildNotificationItem(int index) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: index == 0
-            ? AppColors.primary.withOpacity(0.05)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            child: Icon(
-              Icons.notifications_active,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 15),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'طلب استلام جديد',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                Text(
-                  'ولي أمر الطالب أحمد محمد وصل الآن عند البوابة',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            'منذ ٢د',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    ref.read(websocketServiceProvider).dispose();
+    super.dispose();
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).value;
 
     return Scaffold(
@@ -131,13 +63,33 @@ class TeacherHomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('لوحة التحكم'),
         actions: [
-          // إرجاع أيقونة التنبيهات وجعلها قابلة للنقل
-          // داخل AppBar -> actions:
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, size: 28),
-            onPressed: () => _showNotificationsPanel(
-              context,
-            ), // استدعاء اللوحة بدلاً من التنقل
+          // أيقونة الإشعارات تعرض العدد
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none_rounded, size: 28),
+                onPressed: () => _showNotificationsPanel(context),
+              ),
+              // نقطة حمراء إذا كانت هناك إشعارات غير مقروءة
+              Consumer(
+                builder: (context, ref, child) {
+                  final notifications = ref.watch(webSocketNotificationsProvider);
+                  if (notifications.isEmpty) return const SizedBox.shrink();
+                  return Positioned(
+                    left: 30,
+                    bottom: 18,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           const SizedBox(width: 8),
         ],
@@ -170,16 +122,12 @@ class TeacherHomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // قسم الترحيب وصورة المستخدم (قابلة للنقل)
               _buildWelcomeHeader(context, user),
               const SizedBox(height: 25),
-
               const StatsSection(),
               const SizedBox(height: 30),
-
               const ActiveRequestsSection(),
               const SizedBox(height: 30),
-
               const Center(child: _CopyrightFooter()),
             ],
           ),
@@ -190,7 +138,7 @@ class TeacherHomeScreen extends ConsumerWidget {
 
   Widget _buildWelcomeHeader(BuildContext context, User? user) {
     return GestureDetector(
-      onTap: () => context.push('/profile'), // قابلة للنقل للملف الشخصي
+      onTap: () => context.push('/profile'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -206,17 +154,6 @@ class TeacherHomeScreen extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              backgroundImage: user?.avatar != null
-                  ? NetworkImage(user!.avatar!)
-                  : null,
-              child: user?.avatar == null
-                  ? Icon(Icons.person, color: AppColors.primary, size: 30)
-                  : null,
-            ),
-            const SizedBox(width: 15),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,9 +179,118 @@ class TeacherHomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showNotificationsPanel(BuildContext context) {
+    final notifications = ref.read(webSocketNotificationsProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          children: [
+            // شريط السحب
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'التنبيهات',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      ref.read(webSocketNotificationsProvider.notifier).clearAll();
+                    },
+                    child: const Text('تحديد الكل كمقروء'),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: notifications.isEmpty
+                  ? const Center(child: Text('لا توجد إشعارات'))
+                  : ListView.separated(
+                      itemCount: notifications.length,
+                      padding: const EdgeInsets.all(15),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final notification = notifications[index];
+                        return _buildNotificationItem(notification, index);
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(Map<String, dynamic> notification, int index) {
+    final message = notification['message'] ?? 'إشعار جديد';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: index == 0
+            ? AppColors.primary.withOpacity(0.05)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.primary.withOpacity(0.1),
+            child: Icon(
+              Icons.notifications_active,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'إشعار جديد',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                Text(
+                  message,
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            'الآن',
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// =================== قسم الإحصائيات (تفعيل النقر) ===================
+// =================== قسم الإحصائيات ===================
 class StatsSection extends ConsumerWidget {
   const StatsSection({super.key});
 
@@ -258,7 +304,7 @@ class StatsSection extends ConsumerWidget {
         mainAxisSpacing: 12,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.2, // تم تحسين النسبة لتناسب التصميم الجديد
+        childAspectRatio: 1.2,
         children: [
           _buildStatCard(
             context,
@@ -295,7 +341,9 @@ class StatsSection extends ConsumerWidget {
         ],
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Text('خطأ في البيانات'),
+      error: (err, _) => Center(
+        child: Text('خطأ في تحميل الإحصائيات: $err'),
+      ),
     );
   }
 
@@ -308,8 +356,9 @@ class StatsSection extends ConsumerWidget {
     required String type,
   }) {
     return InkWell(
-      onTap: () =>
-          context.push('/teacher/students-list/$type', extra: {'title': title}),
+      onTap: type == 'total'
+          ? null // غير قابلة للنقر حالياً
+          : () => context.push('/teacher/students-list/$type', extra: {'title': title}),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -320,7 +369,7 @@ class StatsSection extends ConsumerWidget {
             BoxShadow(
               color: color.withOpacity(0.3),
               blurRadius: 8,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -353,7 +402,7 @@ class StatsSection extends ConsumerWidget {
   }
 }
 
-// =================== قسم الطلبات النشطة (تفعيل تفاصيل الطلب) ===================
+// =================== قسم الطلبات النشطة ===================
 class ActiveRequestsSection extends ConsumerWidget {
   const ActiveRequestsSection({super.key});
 
@@ -366,18 +415,36 @@ class ActiveRequestsSection extends ConsumerWidget {
         Text('الطلبات النشطة', style: AppTextStyles.heading2),
         const SizedBox(height: 15),
         requestsAsync.when(
-          data: (requests) => requests.isEmpty
-              ? const Text('لا توجد طلبات حالياً')
-              : ListView.separated(
-                  itemCount: requests.length,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) =>
-                      ActiveRequestCard(request: requests[index]),
+          data: (requests) {
+            if (requests.isEmpty) {
+              return const Center(
+                child: Text('لا توجد طلبات نشطة حالياً'),
+              );
+            }
+            return ListView.separated(
+              itemCount: requests.length,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) =>
+                  ActiveRequestCard(request: requests[index]),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(
+            child: Column(
+              children: [
+                Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                const SizedBox(height: 8),
+                Text('فشل تحميل الطلبات: $err'),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () => ref.refresh(activeRequestsProvider),
+                  child: const Text('إعادة المحاولة'),
                 ),
-          loading: () => const CircularProgressIndicator(),
-          error: (err, _) => const Text('خطأ في تحميل الطلبات'),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -391,7 +458,7 @@ class ActiveRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => _showRequestDetails(context, request), // تفعيل عرض التفاصيل
+      onTap: () => _showRequestDetails(context, request),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
@@ -428,46 +495,145 @@ class ActiveRequestCard extends StatelessWidget {
   void _showRequestDetails(BuildContext context, ActiveRequest request) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(25),
+        padding: const EdgeInsets.fromLTRB(25, 15, 25, 30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             const Center(
               child: Text(
                 'تفاصيل الاستلام',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3142),
+                ),
               ),
             ),
-            const Divider(height: 30),
-            _detailRow(Icons.person, 'اسم الطالب', request.studentName),
-            _detailRow(Icons.family_restroom, 'ولي الأمر', request.parentName),
+            const Divider(height: 40, thickness: 1),
             _detailRow(
-              Icons.access_time,
+              Icons.person_outline_rounded,
+              'اسم الطالب',
+              request.studentName,
+            ),
+            _detailRow(
+              Icons.family_restroom_outlined,
+              'ولي الأمر',
+              request.parentName,
+            ),
+            _detailRow(
+              Icons.access_time_rounded,
               'وقت الطلب',
               DateFormat('hh:mm a').format(request.requestedAt),
             ),
             _detailRow(
-              Icons.info_outline,
+              Icons.info_outline_rounded,
               'الحالة',
-              request.status == 'REQUESTED' ? 'قيد الانتظار' : 'عند البوابة',
+              _getStatusText(request.status),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إغلاق'),
-              ),
+            const SizedBox(height: 35),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: Text(
+                      'إغلاق',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // TODO: إتمام التسليم عبر API
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'إتمام التسليم',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'REQUESTED':
+        return 'قيد الانتظار';
+      case 'AT_GATE':
+        return 'عند البوابة';
+      case 'DELIVERED':
+        return 'تم التسليم';
+      default:
+        return status;
+    }
   }
 
   Widget _detailRow(IconData icon, String label, String value) {
@@ -478,15 +644,20 @@ class ActiveRequestCard extends StatelessWidget {
           Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: 10),
           Text('$label: ', style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ... كود _AppDrawer و _CopyrightFooter كما هو في الكود السابق لديك
-// --- القائمة الجانبية المحدثة ---
+// =================== القائمة الجانبية ===================
 class _AppDrawer extends StatelessWidget {
   final User? user;
   const _AppDrawer({this.user});
@@ -518,7 +689,9 @@ class _AppDrawer extends StatelessWidget {
           _buildDrawerItem(
             Icons.logout_rounded,
             'تسجيل الخروج',
-            () {},
+            () {
+              // TODO: تنفيذ تسجيل الخروج
+            },
             isExit: true,
           ),
           const SizedBox(height: 30),
@@ -596,7 +769,7 @@ class _CopyrightFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'حقوق النشر © ٢٠٢٤ - نظام الكيان التعليمي',
+        'حقوق النشر © 2026 - نظام الكيان التعليمي',
         style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
       ),
     );

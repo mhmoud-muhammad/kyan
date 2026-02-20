@@ -6,14 +6,13 @@ import 'package:myapp/core/constants/api_constants.dart' show ApiConstants;
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/presentation/screens/auth/login_screen.dart';
 import 'package:myapp/presentation/screens/auth/students_list_screen.dart';
-import 'package:myapp/presentation/screens/home/home_screen.dart';
 import 'package:myapp/presentation/screens/profile/profile_screen.dart';
 import 'package:myapp/presentation/screens/settings/settings_screen.dart';
-import 'package:myapp/presentation/screens/splash/splash_screen.dart'; 
+import 'package:myapp/presentation/screens/splash/splash_screen.dart';
 import 'package:myapp/presentation/screens/guardian/guardian_home_screen.dart';
 import 'package:myapp/presentation/screens/teacher/stats_details_screen.dart';
 import 'package:myapp/presentation/screens/teacher/teacher_home_screen.dart';
-import 'package:myapp/presentation/screens/manager/manager_home_screen.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 const _authenticatedRoutes = [
   '/guardian',
@@ -60,31 +59,29 @@ final appRouter = GoRouter(
         },
       ),
     ),
-    // أضف هذا المسار داخل routes: [ ... ] في ملف app_router.dart
 
-GoRoute(
-  path: '/teacher/students-list/:type',
-  name: 'studentsList',
-  pageBuilder: (context, state) {
-    final type = state.pathParameters['type'] ?? 'total';
-    final extra = state.extra as Map<String, dynamic>?;
-    
-    return CustomTransitionPage(
-      key: state.pageKey,
-      child: StudentsListScreen(
-        type: type,
-        title: extra?['title'] ?? 'الطلاب',
-        color: Color(extra?['color'] ?? AppColors.primary.value),
-      ),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
-          child: child,
+    GoRoute(
+      path: '/teacher/students-list/:type',
+      name: 'studentsList',
+      pageBuilder: (context, state) {
+        final type = state.pathParameters['type'] ?? 'total';
+        final extra = state.extra as Map<String, dynamic>?;
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: StudentsListScreen(
+            type: type,
+            title: extra?['title'] ?? 'الطلاب', color: extra?['color'] ?? AppColors.primary,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+              child: child,
+            );
+          },
         );
       },
-    );
-  },
-),
+    ),
     GoRoute(
       path: '/settings',
       name: 'settings',
@@ -99,101 +96,60 @@ GoRoute(
         },
       ),
     ),
-    
-    GoRoute(
-      path: '/home',
-      name: 'home',
-      pageBuilder: (context, state) => const NoTransitionPage(
-        child: HomeScreen(),
-      ),
-    ),
+
     GoRoute(
       path: '/guardian',
       name: 'guardianHome',
-      pageBuilder: (context, state) => const NoTransitionPage(
-        child: GuardianHomeScreen(), // الشاشة التي سننقل إليها منطق ولي الأمر
-      ),
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: GuardianHomeScreen()),
     ),
     GoRoute(
       path: '/teacher',
       name: 'teacherHome',
-      pageBuilder: (context, state) => const NoTransitionPage(
-        child: TeacherHomeScreen(), // شاشة المعلم
-      ),
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: TeacherHomeScreen()),
     ),
+
     GoRoute(
-      path: '/manager',
-      name: 'managerHome',
-      pageBuilder: (context, state) => const NoTransitionPage(
-        child: ManagerHomeScreen(), // شاشة المدير
-      ),
-    ),
-    GoRoute(
-  path: '/teacher/stats-details/:type',  // ✅ تغيير الاسم ليتناسب مع الوظيفة
-  name: 'statsDetails',
-  pageBuilder: (context, state) {
-    final type = state.pathParameters['type'] ?? 'total';
-    final extra = state.extra as Map<String, dynamic>?;
-    
-    return CustomTransitionPage(
-      key: state.pageKey,
-      child: StatsDetailsScreen(  // ✅ استخدام StatsDetailsScreen مباشرة
-       
-      ),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
-          child: child,
+      path: '/teacher/stats-details/:type',
+      name: 'statsDetails',
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: StatsDetailsScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+              child: child,
+            );
+          },
         );
       },
-    );
-  },
-),
+    ),
   ],
-    redirect: (context, state) async {
+  redirect: (context, state) async {
     final isAuthenticated = await _checkAuthStatus();
     final isLoginRoute = state.matchedLocation == '/login';
     final isSplashRoute = state.matchedLocation == '/splash';
 
     if (isSplashRoute) {
-      return null; // ابق في شاشة البداية حتى تنتهي
+      return null;
     }
 
-    // إذا كان المستخدم مسجلاً ويحاول الوصول لصفحة الدخول، امنعه
-    // (لا نعرف وجهته الصحيحة هنا، لذا سنتركه يكمل، والـ SplashScreen ستهتم بالأمر)
     if (isAuthenticated && isLoginRoute) {
-      // يمكن إرجاع null أو توجيهه لمسار افتراضي مؤقت
-      return null; 
+      return null;
     }
 
-    // إذا لم يكن المستخدم مسجلاً ويحاول الوصول لأي صفحة محمية، وجهه للدخول
-    if (!isAuthenticated && _authenticatedRoutes.contains(state.matchedLocation)) {
+    if (!isAuthenticated &&
+        _authenticatedRoutes.contains(state.matchedLocation)) {
       return '/login';
     }
 
-    return null; // اسمح بالمرور في جميع الحالات الأخرى
+    return null;
   },
-
 );
-CustomTransitionPage _buildFadeTransitionPage({
-  required BuildContext context,
-  required GoRouterState state,
-  required Widget child,
-}) {
-  return CustomTransitionPage(
-    key: state.pageKey,
-    child: child,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return FadeTransition(
-        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
-        child: child,
-      );
-    },
-  );
-}
 
 Future<bool> _checkAuthStatus() async {
-  // ... (هذه الدالة تبقى كما هي)
   const storage = FlutterSecureStorage();
   final token = await storage.read(key: ApiConstants.accessTokenKey);
   return token != null && token.isNotEmpty;

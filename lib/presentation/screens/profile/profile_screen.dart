@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -40,23 +40,6 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 const SizedBox(height: 30),
 
-                // Avatar
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: user.avatar != null
-                      ? NetworkImage(user.avatar!)
-                      : null,
-                  child: user.avatar == null
-                      ? Text(
-                          user.name[0].toUpperCase(),
-                          style: const TextStyle(fontSize: 32),
-                        )
-                      : null,
-                ),
-
-                const SizedBox(height: 16),
-
-                // Name
                 Text(
                   user.name,
                   style: const TextStyle(

@@ -92,7 +92,7 @@ final tokenManagerProvider = AutoDisposeProvider<TokenManager>.internal(
 // ignore: unused_element
 typedef TokenManagerRef = AutoDisposeProviderRef<TokenManager>;
 String _$authRemoteDataSourceHash() =>
-    r'2f30b4c0257aaf499ec5f7618a043c5c87386671';
+    r'0038f9ce4474f5ddda529318ca35bfd217f3a432';
 
 /// =====================
 /// Remote DataSource
@@ -115,7 +115,7 @@ final authRemoteDataSourceProvider =
 // ignore: unused_element
 typedef AuthRemoteDataSourceRef = AutoDisposeProviderRef<AuthRemoteDataSource>;
 String _$authLocalDataSourceHash() =>
-    r'82abfcced3adcbccc3d3394717a5b72af6c6c402';
+    r'2212e4c5080cce8a02ce34a315056fb092b213a7';
 
 /// =====================
 /// Local DataSource
@@ -179,27 +179,10 @@ final loginUseCaseProvider = AutoDisposeProvider<LoginUseCase>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LoginUseCaseRef = AutoDisposeProviderRef<LoginUseCase>;
-String _$registerUseCaseHash() => r'40b32ebe481f7183de4ac3eaac00f8473d98eaeb';
-
-/// See also [registerUseCase].
-@ProviderFor(registerUseCase)
-final registerUseCaseProvider = AutoDisposeProvider<RegisterUseCase>.internal(
-  registerUseCase,
-  name: r'registerUseCaseProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$registerUseCaseHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef RegisterUseCaseRef = AutoDisposeProviderRef<RegisterUseCase>;
-String _$authStateHash() => r'f1f44928b8439e77075134d2fb367ed80e5c8939';
+String _$authStateHash() => r'bc844a02292e566bd15b302cc4c247bfa94c205e';
 
 /// =====================
-/// Auth State (Notifier)
+/// Auth State
 /// =====================
 ///
 /// Copied from [AuthState].

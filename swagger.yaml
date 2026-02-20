@@ -1,0 +1,719 @@
+openapi: 3.0.0
+info:
+  title: Kyan API - نظام إدارة الحضور والانصراف للمدارس
+  description: |
+    API لنظام Kyan لإدارة الحضور والانصراف، يخدم ثلاثة أدوار رئيسية:
+    - ولي الأمر (Parent/Guardian)
+    - المعلم (Teacher)
+    - المدير (Manager)
+  version: 1.0.0
+  contact:
+    name: Kyan Digital
+    email: support@kyan.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.kyan.com/v1
+    description: خادم الإنتاج
+  - url: https://staging-api.kyan.com/v1
+    description: خادم التجارب
+  - url: https://dev-api.kyan.com/v1
+    description: خادم التطوير
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        التوكن يتم استلامه بعد تسجيل الدخول.
+        يجب إرساله في الـ Header: `Authorization: Bearer <token>`
+
+  schemas:
+    # ==================== المصادقة (Auth) ====================
+    LoginRequest:
+      type: object
+      required:
+        - phone
+        - password
+      properties:
+        phone:
+          type: string
+          description: رقم الهاتف
+          example: "0123456789"
+        password:
+          type: string
+          description: كلمة المرور
+          example: "123456"
+    
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh
+      properties:
+        refresh:
+          type: string
+          description: Refresh token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    
+    LogoutRequest:
+      type: object
+      required:
+        - refresh
+      properties:
+        refresh:
+          type: string
+          description: Refresh token لإضافته للقائمة السوداء
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    
+    AuthResponse:
+      type: object
+      properties:
+        access:
+          type: string
+          description: Access token (JWT)
+        refresh:
+          type: string
+          description: Refresh token
+        user:
+          $ref: '#/components/schemas/User'
+        role:
+          type: string
+          enum: [PARENT, TEACHER, MANAGER]
+          description: دور المستخدم
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: معرف المستخدم
+        name:
+          type: string
+          description: اسم المستخدم
+        phone:
+          type: string
+          description: رقم الهاتف
+        role:
+          type: string
+          enum: [PARENT, TEACHER, MANAGER]
+          description: دور المستخدم
+        avatar:
+          type: string
+          format: uri
+          description: رابط صورة المستخدم (اختياري)
+      example:
+        id: "user_001"
+        name: "أحمد حسن"
+        phone: "0501234567"
+        role: "PARENT"
+        avatar: "https://i.pravatar.cc/150?img=7"
+    
+    # ==================== المدارس (Schools) ====================
+    School:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: معرف المدرسة
+        name:
+          type: string
+          description: اسم المدرسة
+        public_code:
+          type: string
+          description: الرمز العام للمدرسة
+        location_method:
+          type: string
+          enum: [GPS, BARCODE, QR]
+          description: طريقة تحديد الموقع
+        is_active:
+          type: boolean
+          description: حالة المدرسة (نشطة/غير نشطة)
+      example:
+        id: 1
+        name: "مدرسة النخبة العالمية"
+        public_code: "SCH-001"
+        location_method: "GPS"
+        is_active: true
+    
+    # ==================== الطلاب (Students) ====================
+    AttendanceStatus:
+      type: string
+      enum: [PRESENT, ABSENT, LATE, REQUESTED, AT_GATE, DELIVERED, COMPLETED]
+      description: |
+        حالات حضور الطالب:
+        - PRESENT: حاضر
+        - ABSENT: غائب
+        - LATE: متأخر
+        - REQUESTED: قيد الطلب (طلب استلام)
+        - AT_GATE: عند البوابة
+        - DELIVERED: تم التسليم
+        - COMPLETED: مكتمل
+    
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: معرف الطالب
+        full_name:
+          type: string
+          description: اسم الطالب الكامل
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        school_name:
+          type: string
+          description: اسم المدرسة (اختياري)
+        avatar_url:
+          type: string
+          format: uri
+          description: رابط صورة الطالب (اختياري)
+      example:
+        id: 101
+        full_name: "سالم أحمد حسن"
+        status: "PRESENT"
+        avatar_url: "https://i.pravatar.cc/150?img=12"
+    
+    # ==================== طلبات الاستلام (Pickup Requests) ====================
+    ActiveRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: معرف الطلب
+        student_name:
+          type: string
+          description: اسم الطالب
+        parent_name:
+          type: string
+          description: اسم ولي الأمر
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        requested_at:
+          type: string
+          format: date-time
+          description: وقت الطلب
+      example:
+        id: 101
+        student_name: "سالم أحمد حسن"
+        parent_name: "أحمد حسن"
+        status: "REQUESTED"
+        requested_at: "2024-05-21T13:00:00Z"
+    
+    # ==================== إحصائيات المعلم ====================
+    TeacherDashboardStats:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: إجمالي عدد الطلاب
+        present:
+          type: integer
+          description: عدد الحاضرين
+        requested:
+          type: integer
+          description: عدد طلبات الاستلام
+        at_gate:
+          type: integer
+          description: عدد الطلاب عند البوابة
+        delivered:
+          type: integer
+          description: عدد الطلاب الذين تم تسليمهم
+      example:
+        total: 30
+        present: 20
+        requested: 5
+        at_gate: 3
+        delivered: 2
+    
+    # ==================== تحديث حالة الطالب ====================
+    UpdateStudentStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+      example:
+        status: "AT_GATE"
+    
+    UpdateStudentStatusResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: رسالة النجاح
+        student_id:
+          type: integer
+          description: معرف الطالب
+        current_status:
+          $ref: '#/components/schemas/AttendanceStatus'
+      example:
+        message: "تم التحديث إلى AT_GATE بنجاح"
+        student_id: 2101
+        current_status: "AT_GATE"
+    
+    # ==================== طلبات انضمام ولي الأمر ====================
+    ApproveParentRequest:
+      type: object
+      required:
+        - school_id
+      properties:
+        school_id:
+          type: integer
+          description: معرف المدرسة
+      example:
+        school_id: 1
+    
+    # ==================== الأخطاء ====================
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: تفاصيل الخطأ
+        error:
+          type: string
+          description: رسالة الخطأ (في بعض الحالات)
+        message:
+          type: string
+          description: رسالة الخطأ (في بعض الحالات)
+    
+    ValidationError:
+      type: object
+      properties:
+        errors:
+          type: object
+          description: أخطاء التحقق من الصحة
+          additionalProperties:
+            type: string
+
+  responses:
+    UnauthorizedError:
+      description: التوكن مفقود أو منتهي الصلاحية
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "بيانات الدخول غير صحيحة"
+    
+    ForbiddenError:
+      description: غير مصرح بالوصول (دور غير مناسب أو حساب غير نشط)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "حساب المعلم غير نشط أو غير موجود"
+    
+    NotFoundError:
+      description: المورد غير موجود
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Not found."
+    
+    BadRequestError:
+      description: طلب غير صالح
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "انتقال غير مسموح من PRESENT إلى DELIVERED"
+
+paths:
+  # ==================== المصادقة (Auth) ====================
+  /auth/login/:
+    post:
+      tags:
+        - المصادقة
+      summary: تسجيل الدخول
+      description: تسجيل الدخول باستخدام رقم الهاتف وكلمة المرور
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: تم تسجيل الدخول بنجاح
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/refresh/:
+    post:
+      tags:
+        - المصادقة
+      summary: تحديث التوكن
+      description: تحديث access token باستخدام refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: تم تحديث التوكن بنجاح
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: التوكن الجديد
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/logout/:
+    post:
+      tags:
+        - المصادقة
+      summary: تسجيل الخروج
+      description: إبطال مفعول التوكن ومنع استخدامه مرة أخرى
+      operationId: logout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: تم تسجيل الخروج بنجاح
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "تم تسجيل الخروج بنجاح"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== المستخدم (User) ====================
+  /user/:
+    get:
+      tags:
+        - المستخدم
+      summary: بيانات المستخدم الحالي
+      description: جلب بيانات المستخدم المسجل دخوله حالياً
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: تم جلب البيانات بنجاح
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== ولي الأمر (Parent) ====================
+  /parent/schools/:
+    get:
+      tags:
+        - ولي الأمر
+      summary: قائمة مدارس ولي الأمر
+      description: جلب المدارس التي تم قبول ولي الأمر فيها
+      operationId: getParentSchools
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: تم جلب المدارس بنجاح
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/School'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /parent/students/:
+    get:
+      tags:
+        - ولي الأمر
+      summary: قائمة أبناء ولي الأمر
+      description: جلب قائمة أبناء ولي الأمر في مدرسة محددة
+      operationId: getParentStudents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: معرف المدرسة
+      responses:
+        '200':
+          description: تم جلب الأبناء بنجاح
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Student'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /parent/pickup/create/:
+    post:
+      tags:
+        - ولي الأمر
+      summary: إنشاء طلب استلام
+      description: إنشاء طلب استلام لطالب معين
+      operationId: createPickupRequest
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - student
+              properties:
+                student:
+                  type: integer
+                  description: معرف الطالب
+      responses:
+        '201':
+          description: تم إنشاء الطلب بنجاح
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== المعلم (Teacher) ====================
+  /teacher/dashboard/:
+    get:
+      tags:
+        - المعلم
+      summary: إحصائيات لوحة تحكم المعلم
+      description: جلب إحصائيات الحضور والطلبات للمعلم
+      operationId: getTeacherDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: تم جلب الإحصائيات بنجاح
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherDashboardStats'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /teacher/requests/active/:
+    get:
+      tags:
+        - المعلم
+      summary: الطلبات النشطة
+      description: جلب قائمة طلبات الاستلام النشطة
+      operationId: getActiveRequests
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: تم جلب الطلبات بنجاح
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: عدد الطلبات
+                  next:
+                    type: string
+                    nullable: true
+                    description: رابط الصفحة التالية
+                  previous:
+                    type: string
+                    nullable: true
+                    description: رابط الصفحة السابقة
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActiveRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /teacher/student/{student_id}/status/:
+    patch:
+      tags:
+        - المعلم
+      summary: تحديث حالة الطالب
+      description: تحديث حالة حضور الطالب (مع التحقق من الانتقالات المسموحة)
+      operationId: updateStudentStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: معرف الطالب
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStudentStatusRequest'
+      responses:
+        '200':
+          description: تم تحديث الحالة بنجاح
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateStudentStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /teacher/students/:
+    get:
+      tags:
+        - المعلم
+      summary: قائمة الطلاب حسب الحالة
+      description: جلب قائمة الطلاب وتصفيتهم حسب حالة معينة
+      operationId: getStudentsByStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AttendanceStatus'
+          description: تصفية حسب الحالة
+      responses:
+        '200':
+          description: تم جلب الطلاب بنجاح
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Student'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  # ==================== المدير (Manager) ====================
+  /manager/approve-parent/{parent_id}/:
+    post:
+      tags:
+        - المدير
+      summary: قبول طلب انضمام ولي أمر
+      description: قبول طلب انضمام ولي أمر إلى مدرسة معينة
+      operationId: approveParent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: parent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: معرف ولي الأمر
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveParentRequest'
+      responses:
+        '200':
+          description: تم قبول الطلب بنجاح
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "تم تفعيل حساب ولي الأمر بنجاح"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: لا يوجد طلب ربط
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "علاقة ولي الأمر بالمدرسة غير موجودة"
+
+  # ==================== WebSocket ====================
+  /ws/pickup/teacher/:
+    get:
+      tags:
+        - WebSocket
+      summary: اتصال WebSocket للمعلم
+      description: |
+        اتصال WebSocket للتحديثات اللحظية للمعلم.
+        يجب إرسال التوكن في الـ Header: `Authorization: Bearer <token>`
+        و Origin: `https://used-alex-techcodesdn-bdb25f1f.koyeb.app`
+      operationId: teacherWebSocket
+      responses:
+        '101':
+          description: تم التبديل إلى WebSocket
+        '400':
+          description: بيانات ناقصة (Missing school_id)
+        '401':
+          description: توكن غير صالح
+        '403':
+          description: المستخدم ليس معلماً أو حساب غير نشط
+
+tags:
+  - name: المصادقة
+    description: عمليات المصادقة وإدارة الجلسات
+  - name: المستخدم
+    description: إدارة بيانات المستخدم
+  - name: ولي الأمر
+    description: عمليات خاصة بولي الأمر
+  - name: المعلم
+    description: عمليات خاصة بالمعلم
+  - name: المدير
+    description: عمليات خاصة بالمدير
+  - name: WebSocket
+    description: اتصالات WebSocket للتحديثات اللحظية

@@ -1,96 +1,127 @@
-// auth_local_datasource.dart
+  // lib/data/datasources/auth_local_datasource.dart
 
-import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../core/constants/storage_keys.dart';
-import '../../domain/entities/user.dart';
-abstract class AuthLocalDataSource {
-  Future<void> cacheUser(User user);
-  Future<User?> getCachedUser();
-  Future<String?> getAccessToken();
-  Future<String?> getRefreshToken();
-  Future<void> clearAuthData();
-  Future<bool> hasValidToken();
+  import 'dart:convert';
+  import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+  import 'package:myapp/core/constants/api_constants.dart';
+  import '../../core/constants/storage_keys.dart';
+  import '../../domain/entities/user.dart';
 
-  Future<void> cacheTokens(String accessToken, String refreshToken);
-  Future<int?> getTokenIssuedAt();
-}
+  abstract class AuthLocalDataSource {
+    Future<void> cacheUser(User user);
+    Future<User?> getCachedUser();
 
-class AuthLocalDataSourceImpl implements AuthLocalDataSource {
-  final FlutterSecureStorage storage;
+    Future<String?> getAccessToken();
+    Future<String?> getRefreshToken();
 
-  AuthLocalDataSourceImpl(this.storage);
+    Future<void> cacheTokens(String accessToken, String refreshToken);
+    Future<int?> getTokenIssuedAt();
 
-  // ---------------- User ----------------
-  @override
-  Future<void> cacheUser(User user) async {
-    await storage.write(
-      key: StorageKeys.userData,
-      value: jsonEncode(user.toJson()),
-    );
+    Future<bool> hasValidToken();
+    Future<void> clearAuthData();
+
+  Future<void> cacheRole(String role) async {}
   }
 
-  @override
-  Future<User?> getCachedUser() async {
-    final userJson = await storage.read(key: StorageKeys.userData);
-    if (userJson == null) return null;
+  class AuthLocalDataSourceImpl implements AuthLocalDataSource {
+    final FlutterSecureStorage storage;
 
-    try {
-      return User.fromJson(jsonDecode(userJson));
-    } catch (_) {
-      return null;
+    AuthLocalDataSourceImpl(this.storage);
+
+    // ================= USER =================
+
+    @override
+    Future<void> cacheUser(User user) async {
+      await storage.write(
+        key: StorageKeys.userData,
+        value: jsonEncode(user.toJson()),
+      );
     }
-  }
 
-  // ---------------- Token ----------------
-  @override
-  Future<String?> getAccessToken() =>
-      storage.read(key: StorageKeys.accessToken);
+    @override
+    Future<User?> getCachedUser() async {
+      final userJson = await storage.read(key: StorageKeys.userData);
+      if (userJson == null) return null;
 
-  @override
-  Future<String?> getRefreshToken() =>
-      storage.read(key: StorageKeys.refreshToken);
+      try {
+        return User.fromJson(jsonDecode(userJson));
+      } catch (_) {
+        return null;
+      }
+    }
 
-  @override
-  Future<void> cacheTokens(
+    // ================= TOKEN =================
+
+    @override
+    Future<String?> getAccessToken() {
+      return storage.read(key: StorageKeys.accessToken);
+    }
+
+    @override
+    Future<String?> getRefreshToken() {
+      return storage.read(key: StorageKeys.refreshToken);
+    }
+
+    @override
+    Future<void> cacheTokens(
       String accessToken,
       String refreshToken,
-  ) async {
-    await storage.write(
-      key: StorageKeys.accessToken,
-      value: accessToken,
-    );
+    ) async {
+      await storage.write(
+        key: StorageKeys.accessToken,
+        value: accessToken,
+      );
 
-    await storage.write(
-      key: StorageKeys.refreshToken,
-      value: refreshToken,
-    );
+      await storage.write(
+        key: StorageKeys.refreshToken,
+        value: refreshToken,
+      );
 
-    await storage.write(
-      key: StorageKeys.tokenIssuedAt,
-      value: DateTime.now().millisecondsSinceEpoch.toString(),
-    );
-  }
+      await storage.write(
+        key: StorageKeys.tokenIssuedAt,
+        value: DateTime.now().millisecondsSinceEpoch.toString(),
+      );
+    }
 
-  @override
-  Future<int?> getTokenIssuedAt() async {
-    final value = await storage.read(key: StorageKeys.tokenIssuedAt);
-    return value != null ? int.tryParse(value) : null;
-  }
+    @override
+    Future<int?> getTokenIssuedAt() async {
+      final value = await storage.read(key: StorageKeys.tokenIssuedAt);
+      return value != null ? int.tryParse(value) : null;
+    }
 
-  // ---------------- Utilities ----------------
-  @override
-  Future<void> clearAuthData() async {
-    await storage.delete(key: StorageKeys.accessToken);
-    await storage.delete(key: StorageKeys.refreshToken);
-    await storage.delete(key: StorageKeys.userData);
-    await storage.delete(key: StorageKeys.tokenIssuedAt);
-  }
+    @override
+    Future<bool> hasValidToken() async {
+      final accessToken = await getAccessToken();
+      final issuedAtMillis = await getTokenIssuedAt();
 
-  @override
-  Future<bool> hasValidToken() async {
-    final token = await getAccessToken();
-    return token != null && token.isNotEmpty;
-  }
+      if (accessToken == null || issuedAtMillis == null) return false;
+
+      final issuedAt =
+          DateTime.fromMillisecondsSinceEpoch(issuedAtMillis);
+
+      final expiresAt = issuedAt.add(
+        Duration(minutes: ApiConstants.tokenLifetimeMinutes),
+      );
+
+      return DateTime.now().isBefore(expiresAt);
+    }
+
+
+@override
+  Future<void> cacheRole(String role) async {
+  await storage.write(key: StorageKeys.userRole, value: role);
 }
 
+Future<String?> getCachedRole() async {
+  return await storage.read(key: StorageKeys.userRole);
+}
+
+// وفي clearAuthData
+    @override
+    Future<void> clearAuthData() async {
+      await storage.delete(key: StorageKeys.accessToken);
+      await storage.delete(key: StorageKeys.refreshToken);
+      await storage.delete(key: StorageKeys.tokenIssuedAt);
+      await storage.delete(key: StorageKeys.userData);
+      await storage.delete(key: StorageKeys.userRole);
+    }
+  }

@@ -9,12 +9,12 @@ part of 'auth_response.dart';
 AuthResponse _$AuthResponseFromJson(Map<String, dynamic> json) => AuthResponse(
   accessToken: json['access'] as String,
   refreshToken: json['refresh'] as String,
-  user: User.fromJson(json['user'] as Map<String, dynamic>),
+  role: json['role'] as String,
 );
 
 Map<String, dynamic> _$AuthResponseToJson(AuthResponse instance) =>
     <String, dynamic>{
       'access': instance.accessToken,
       'refresh': instance.refreshToken,
-      'user': instance.user,
+      'role': instance.role,
     };

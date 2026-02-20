@@ -2,13 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:myapp/core/services/location_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/school.dart';
 import 'package:myapp/domain/entities/student.dart';
 import 'package:myapp/domain/entities/user.dart';
-import 'package:myapp/presentation/providers/auth_provider.dart';
-import 'package:myapp/presentation/providers/guardian_provider.dart';
+import 'package:myapp/presentation/providers/auth/auth_provider.dart';
+import 'package:myapp/presentation/providers/guardian/guardian_provider.dart';
 
 class GuardianHomeScreen extends ConsumerWidget {
   const GuardianHomeScreen({super.key});
@@ -168,26 +169,6 @@ class _AppDrawer extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              CircleAvatar(
-                radius: 35,
-                backgroundColor: AppColors.surface,
-                backgroundImage: user?.avatar != null
-                    ? NetworkImage(user!.avatar!)
-                    : null,
-                child: user?.avatar == null
-                    ? Text(
-                        user?.name.isNotEmpty == true
-                            ? user!.name[0].toUpperCase()
-                            : 'U',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 12),
               Text(
                 user?.name ?? 'مستخدم',
                 style: const TextStyle(
@@ -328,6 +309,7 @@ class SchoolSelectionView extends ConsumerWidget {
             onRefresh: () => ref.refresh(mySchoolsProvider.future),
           );
         }
+        print('Refreshing schools list...${schools.length} schools...');
         return RefreshIndicator(
           onRefresh: () => ref.refresh(mySchoolsProvider.future),
           color: AppColors.primary,
@@ -497,13 +479,14 @@ class StudentListView extends ConsumerWidget {
 class StudentAttendanceCard extends ConsumerWidget {
   final Student student;
   final int index;
-  const StudentAttendanceCard({
-    super.key,
-    required this.student,
-    this.index = 0,
-  });
+  final locationService = LocationService();
+
+  StudentAttendanceCard({super.key, required this.student, this.index = 0});
 
   Map<String, dynamic> _getStatusInfo(AttendanceStatus status) {
+    print(
+      'Determining status info for student ${student.name} with status: $status',
+    );
     switch (status) {
       case AttendanceStatus.present:
         return {
@@ -555,11 +538,16 @@ class StudentAttendanceCard extends ConsumerWidget {
     final statusInfo = _getStatusInfo(student.status);
     final bool canRequestPickup = student.status == AttendanceStatus.present;
 
-    ref.listen(pickupRequestProvider, (previous, next) {
+    // استخدام provider خاص بكل طالب
+    final pickupState = ref.watch(pickupRequestForStudentProvider(student.id));
+    final isLoading = pickupState is AsyncLoading;
+
+    // الاستماع للنتيجة
+    ref.listen(pickupRequestForStudentProvider(student.id), (previous, next) {
       if (next is AsyncError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ فشل إرسال الطلب: ${next.error}'),
+            content: Text('❌ ${next.error}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -579,9 +567,9 @@ class StudentAttendanceCard extends ConsumerWidget {
           ),
         );
         ref.invalidate(studentsBySchoolProvider);
+        Future.microtask(() => ref.refresh(studentsBySchoolProvider.future));
       }
     });
-
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 300 + (index * 100)),
@@ -694,62 +682,76 @@ class StudentAttendanceCard extends ConsumerWidget {
                     ),
                   ],
                 ),
+
                 if (canRequestPickup) ...[
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(height: 1, thickness: 0.5),
                   ),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final pickupState = ref.watch(pickupRequestProvider);
-                      final isLoading = pickupState is AsyncLoading;
-
-                      return SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: isLoading
-                              ? null
-                              : () => ref
-                                    .read(pickupRequestProvider.notifier)
-                                    .sendRequest(student.id),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.onPrimary,
-                            disabledBackgroundColor: AppColors.textHint
-                                .withOpacity(0.3),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: isLoading
-                              ? const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              // طلب الموقع
+                              final position = await locationService
+                                  .getCurrentLocation();
+                              if (position == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      '❌ لم نتمكن من الحصول على موقعك. تأكد من تفعيل GPS',
                                     ),
-                                    SizedBox(width: 8),
-                                    Text('جاري الإرسال...'),
-                                  ],
-                                )
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.send_rounded, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('طلب استلام الآن'),
-                                  ],
-                                ),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                                return;
+                              }
+                               ref
+                                .read(pickupRequestForStudentProvider(student.id).notifier)
+                                .sendRequest(
+                                  lat: position.latitude,
+                                  lng: position.longitude,
+                                );
+                          },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                        disabledBackgroundColor: AppColors.textHint.withOpacity(
+                          0.3,
                         ),
-                      );
-                    },
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: isLoading
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('جاري الإرسال...'),
+                              ],
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.send_rounded, size: 18),
+                                SizedBox(width: 8),
+                                Text('طلب استلام الآن'),
+                              ],
+                            ),
+                    ),
                   ),
                 ],
               ],

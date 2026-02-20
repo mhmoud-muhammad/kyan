@@ -9,14 +9,12 @@ class User {
   final String name;
   final String phone;
   final String role; 
-  final String? avatar; 
 
   User({
     required this.id,
     required this.name,
     required this.phone,
     required this.role, 
-    this.avatar,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
