@@ -46,7 +46,7 @@ class GuardianRepositoryImpl implements GuardianRepository {
       return Left(UnauthorizedFailure(e.message));
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
-    } catch (e, stackTrace) {
+    } catch (e) {
       print("🔥 خطأ غير متوقع: $e");
       return Left(ServerFailure('خطأ غير متوقع في جلب المدارس.'));
     }

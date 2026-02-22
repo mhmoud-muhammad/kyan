@@ -56,8 +56,7 @@ TokenManager tokenManager(TokenManagerRef ref) {
 /// Remote DataSource
 /// =====================
 @riverpod
-AuthRemoteDataSource authRemoteDataSource(
-    AuthRemoteDataSourceRef ref) {
+AuthRemoteDataSource authRemoteDataSource(AuthRemoteDataSourceRef ref) {
   return AuthRemoteDataSource(
     ref.watch(apiClientProvider),
     ref.watch(tokenManagerProvider),
@@ -68,11 +67,8 @@ AuthRemoteDataSource authRemoteDataSource(
 /// Local DataSource
 /// =====================
 @riverpod
-AuthLocalDataSource authLocalDataSource(
-    AuthLocalDataSourceRef ref) {
-  return AuthLocalDataSourceImpl(
-    ref.watch(secureStorageProvider),
-  );
+AuthLocalDataSource authLocalDataSource(AuthLocalDataSourceRef ref) {
+  return AuthLocalDataSourceImpl(ref.watch(secureStorageProvider));
 }
 
 /// =====================
@@ -96,7 +92,6 @@ LoginUseCase loginUseCase(LoginUseCaseRef ref) {
   return LoginUseCase(ref.watch(authRepositoryProvider));
 }
 
-
 /// =====================
 /// Auth State
 /// =====================
@@ -104,8 +99,6 @@ LoginUseCase loginUseCase(LoginUseCaseRef ref) {
 class AuthState extends _$AuthState {
   @override
   AsyncValue<User?> build() {
-    // لا init هنا ❌
-    // لا reset للحالة ❌
     return const AsyncData(null);
   }
 
@@ -116,17 +109,14 @@ class AuthState extends _$AuthState {
     state = const AsyncLoading();
 
     final useCase = ref.read(loginUseCaseProvider);
-    final result = await useCase(
-      LoginParams(phone: phone, password: password),
-    );
+    final result = await useCase(LoginParams(phone: phone, password: password));
 
     state = await result.fold(
-      (failure) async =>
-          AsyncError(failure.message, StackTrace.current),
+      (failure) async => AsyncError(failure.message, StackTrace.current),
       (_) async {
-        // المستخدم تم تخزينه داخل Repository
-        final user =
-            await ref.read(authLocalDataSourceProvider).getCachedUser();
+        final user = await ref
+            .read(authLocalDataSourceProvider)
+            .getCachedUser();
 
         if (user == null) {
           return AsyncError(
@@ -134,7 +124,6 @@ class AuthState extends _$AuthState {
             StackTrace.current,
           );
         }
-
         return AsyncData(user);
       },
     );
@@ -147,22 +136,20 @@ class AuthState extends _$AuthState {
     final repo = ref.read(authRepositoryProvider);
     final result = await repo.isAuthenticated();
 
-    await result.fold(
-      (_) async => state = const AsyncData(null),
-      (isAuth) async {
-        if (!isAuth) {
-          state = const AsyncData(null);
-          return;
-        }
+    await result.fold((_) async => state = const AsyncData(null), (
+      isAuth,
+    ) async {
+      if (!isAuth) {
+        state = const AsyncData(null);
+        return;
+      }
 
-        final userResult = await repo.getCurrentUser();
-        state = userResult.fold(
-          (failure) =>
-              AsyncError(failure.message, StackTrace.current),
-          (user) => AsyncData(user),
-        );
-      },
-    );
+      final userResult = await repo.getCurrentUser();
+      state = userResult.fold(
+        (failure) => AsyncError(failure.message, StackTrace.current),
+        (user) => AsyncData(user),
+      );
+    });
   }
 
   /// =====================

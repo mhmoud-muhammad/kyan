@@ -71,17 +71,17 @@ class ApiClient {
               (response.statusCode! < 200 || response.statusCode! >= 300)) {
             // إذا كان 401، نرمي UnauthorizedException
             if (response.statusCode == 401) {
-              throw DioError(
+              throw DioException(
                 requestOptions: response.requestOptions,
                 response: response,
-                type: DioErrorType.badResponse,
+                type: DioExceptionType.badResponse,
                 error: 'Unauthorized',
               );
             } else {
-              throw DioError(
+              throw DioException(
                 requestOptions: response.requestOptions,
                 response: response,
-                type: DioErrorType.badResponse,
+                type: DioExceptionType.badResponse,
                 error: 'Server error',
               );
             }

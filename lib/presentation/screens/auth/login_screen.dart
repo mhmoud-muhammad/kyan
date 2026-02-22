@@ -53,7 +53,7 @@ class LoginScreen extends ConsumerWidget {
         },
         loading: () {},
         error: (error, _) {
-          ref.read(errorMessageProvider.notifier).state = error.toString();
+          ref.read(errorMessageProvider.notifier).state = error as String;
           Timer(const Duration(seconds: 3), () {
             if (ref.exists(errorMessageProvider)) {
               ref.read(errorMessageProvider.notifier).state = null;
@@ -138,15 +138,27 @@ class LoginScreen extends ConsumerWidget {
                             isLoading: authState.isLoading,
                             onPressed: authState.maybeWhen(
                               loading: () => null,
-                              orElse: () => () {
-                                if (formKey.currentState!.validate()) {
+                              orElse: () => () async {
+                                if (!formKey.currentState!.validate()) return;
+
+                                final isConnected = await ref
+                                    .read(networkInfoProvider)
+                                    .isConnected;
+
+                                if (!isConnected) {
                                   ref
-                                      .read(authStateProvider.notifier)
-                                      .login(
-                                        phoneController.text.trim(),
-                                        passwordController.text,
-                                      );
+                                          .read(errorMessageProvider.notifier)
+                                          .state =
+                                      '❌ لا يوجد اتصال بالإنترنت\nيرجى التحقق من الشبكة وإعادة المحاولة';
+                                  return;
                                 }
+
+                                ref
+                                    .read(authStateProvider.notifier)
+                                    .login(
+                                      phoneController.text.trim(),
+                                      passwordController.text,
+                                    );
                               },
                             ),
                             primaryColor: primaryBlue,

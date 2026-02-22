@@ -66,7 +66,6 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
     print('⚠️ getStudentsByStatus غير مدعوم بعد، يعيد قائمة فارغة');
     return [];
     
-    // عند توفير الـ endpoint، يمكن استخدام الكود التالي:
     /*
     final status = _mapStatusType(statusType);
     if (status.isEmpty) return [];
@@ -83,20 +82,6 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
   }
 
   // دالة مساعدة لتحويل type إلى status
-  String _mapStatusType(String statusType) {
-    switch (statusType) {
-      case 'present':
-        return 'PRESENT';
-      case 'requested':
-        return 'REQUESTED';
-      case 'atGate':
-        return 'AT_GATE';
-      case 'delivered':
-        return 'DELIVERED';
-      default:
-        return '';
-    }
-  }
 }
 
 @riverpod

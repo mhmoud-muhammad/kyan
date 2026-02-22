@@ -7,7 +7,6 @@ import 'package:myapp/core/services/websocket_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/active_request.dart';
-import 'package:myapp/domain/entities/teacher_dashboard_stats.dart';
 import 'package:myapp/domain/entities/user.dart';
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';

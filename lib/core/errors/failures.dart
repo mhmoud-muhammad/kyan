@@ -11,7 +11,10 @@ class Failure {
 
 /// فشل الشبكة (الاتصال بالإنترنت)
 class NetworkFailure extends Failure {
-  NetworkFailure([super.message = 'لا يوجد اتصال بالإنترنت']);
+  NetworkFailure([
+    super.message =
+        '❌ لا يوجد اتصال بالإنترنت\nيرجى التحقق من الشبكة وإعادة المحاولة',
+  ]);
 }
 
 /// فشل غير مصرح (مثل 401 أو انتهاء الجلسة)
@@ -22,7 +25,7 @@ class UnauthorizedFailure extends Failure {
 /// فشل في الوصول للخادم الداخلي
 class ServerFailure extends Failure {
   ServerFailure([super.message = 'خطأ داخلي في الخادم', int? code])
-      : super(code: code);
+    : super(code: code);
 }
 
 /// فشل التحقق من صحة البيانات (Validation)
@@ -39,8 +42,6 @@ class ValidationFailure extends Failure {
 class CacheFailure extends Failure {
   CacheFailure([super.message = 'حدث خطأ في التخزين المؤقت']);
 }
-
-
 
 class AuthFailure extends Failure {
   AuthFailure([super.message = 'خطأ في بيانات الدخول']);

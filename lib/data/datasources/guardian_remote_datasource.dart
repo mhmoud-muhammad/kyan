@@ -20,7 +20,7 @@ class GuardianRemoteDataSourceImpl implements GuardianRemoteDataSource {
 
   GuardianRemoteDataSourceImpl(this.apiClient);
 
-void _handleDioError(DioError e) {
+void _handleDioError(DioException e) {
   if (e.response?.statusCode == 401) {
     throw UnauthorizedException(
       e.response?.data?['message'] ?? 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً',
@@ -57,35 +57,74 @@ void _handleDioError(DioError e) {
     }
   }
 
-  @override
-  Future<void> createPickupRequest(
-    String studentId, {
-    double? lat,
-    double? lng,
-  }) async {
-    final Map<String, dynamic> body = {'student': int.parse(studentId)};
+  // @override
+  // Future<void> createPickupRequest(
+  //   String studentId, {
+  //   double? lat,
+  //   double? lng,
+  // }) async {
+  //   final Map<String, dynamic> body = {'student': int.parse(studentId)};
+  //   if (lat != null && lng != null) {
+  //     body['lat'] = lat;
+  //     body['lng'] = lng;
+  //     // جرب أيضاً باستخدام latitude/longitude
+  //     // body['latitude'] = lat;
+  //     // body['longitude'] = lng;
+  //   }
+  //   print('📡 Sending pickup request with location: $body');
+  //   final response = await apiClient.post(
+  //     ApiConstants.createPickupRequestEndpoint,
+  //     data: body,
+  //   );
+  //   print('📡 Response status: ${response.statusCode}');
+  //   print('📡 Response data: ${response.data}');
+
+  //   if (response.statusCode != 200 && response.statusCode != 201) {
+  //     throw ServerException(
+  //       'فشل إنشاء الطلب: ${response.statusCode} - ${response.data}',
+  //     );
+  //   }
+  // }
+
+@override
+Future<void> createPickupRequest(
+  String studentId, {
+  double? lat,
+  double? lng,
+}) async {
+  try {
+    final Map<String, dynamic> body = {
+      'student': int.parse(studentId),
+    };
+
     if (lat != null && lng != null) {
       body['lat'] = lat;
       body['lng'] = lng;
-      // جرب أيضاً باستخدام latitude/longitude
-      // body['latitude'] = lat;
-      // body['longitude'] = lng;
     }
+
     print('📡 Sending pickup request with location: $body');
+
     final response = await apiClient.post(
       ApiConstants.createPickupRequestEndpoint,
       data: body,
     );
+
     print('📡 Response status: ${response.statusCode}');
     print('📡 Response data: ${response.data}');
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
+    if (response.statusCode != 200 &&
+        response.statusCode != 201) {
       throw ServerException(
-        'فشل إنشاء الطلب: ${response.statusCode} - ${response.data}',
+        'فشل إنشاء الطلب: ${response.statusCode}',
       );
     }
-  }
 
+  } on DioException catch (e) {
+    print('❌ Dio error: ${e.response?.statusCode}');
+    print('❌ Dio error body: ${e.response?.data}');
+    _handleDioError(e);
+  }
+}
   @override
   Future<List<Student>> getStudentsBySchool(String schoolId) async {
     try {

@@ -19,7 +19,13 @@ class GuardianHomeScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final selectedSchool = ref.watch(selectedSchoolProvider);
     final user = authState.value;
-
+    ref.listen(authStateProvider, (previous, next) {
+      if (next is AsyncData && next.value == null) {
+        if (context.mounted) {
+          context.go('/login');
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -137,12 +143,54 @@ class _AppDrawer extends ConsumerWidget {
               title: 'تسجيل الخروج',
               color: AppColors.error,
               onTap: () async {
-                Navigator.pop(context);
+                debugPrint('1. onTap: بدأ');
+
                 final shouldLogout = await _showLogoutConfirmationDialog(
                   context,
                 );
+                debugPrint('2. shouldLogout = $shouldLogout');
+
                 if (shouldLogout == true && context.mounted) {
-                  await ref.read(authStateProvider.notifier).logout();
+                  debugPrint('3. المستخدم أكد، نغلق القائمة الجانبية');
+
+                  // إغلاق القائمة الجانبية
+                  Navigator.pop(context);
+
+                  try {
+                    debugPrint('4. سننفذ logout() الآن');
+                    await ref.read(authStateProvider.notifier).logout();
+                    debugPrint('5. logout() اكتمل بنجاح');
+
+                    // استخدام addPostFrameCallback للانتظار حتى يتم بناء الإطار التالي
+                    if (context.mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        debugPrint('6. addPostFrameCallback: نحاول التوجيه');
+                        // نتحقق من mounted مرة أخرى داخل callback
+                        if (context.mounted) {
+                          context.go('/login');
+                          debugPrint('7. تم التوجيه إلى /login');
+                        } else {
+                          debugPrint(
+                            '7. السياق غير صالح حتى بعد الإطار التالي',
+                          );
+                        }
+                      });
+                    } else {
+                      debugPrint('6. السياق غير صالح مباشرة بعد logout()');
+                    }
+                  } catch (e, stack) {
+                    debugPrint('❌ خطأ في logout: $e\n$stack');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('حدث خطأ أثناء تسجيل الخروج: $e'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  debugPrint('3. المستخدم ألغى أو السياق غير صالح');
                 }
               },
             ),
@@ -593,48 +641,6 @@ class StudentAttendanceCard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    // صورة الطالب
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundImage: student.avatarUrl != null
-                              ? NetworkImage(student.avatarUrl!)
-                              : null,
-                          backgroundColor: AppColors.primaryLight.withOpacity(
-                            0.2,
-                          ),
-                          child: student.avatarUrl == null
-                              ? Text(
-                                  student.name[0].toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: statusInfo['color'],
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.surface,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-
                     // معلومات الطالب
                     Expanded(
                       child: Column(
@@ -708,13 +714,17 @@ class StudentAttendanceCard extends ConsumerWidget {
                                 );
                                 return;
                               }
-                               ref
-                                .read(pickupRequestForStudentProvider(student.id).notifier)
-                                .sendRequest(
-                                  lat: position.latitude,
-                                  lng: position.longitude,
-                                );
-                          },
+                              ref
+                                  .read(
+                                    pickupRequestForStudentProvider(
+                                      student.id,
+                                    ).notifier,
+                                  )
+                                  .sendRequest(
+                                    lat: position.latitude,
+                                    lng: position.longitude,
+                                  );
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.onPrimary,

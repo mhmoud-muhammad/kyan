@@ -8,7 +8,7 @@ export 'constants/app_constants.dart';
 // Errors
 export 'errors/exceptions.dart';
 export 'errors/failures.dart';
-
+export 'errors/exception_mapper.dart';
 // Network
 export 'network/api_client.dart';
 
