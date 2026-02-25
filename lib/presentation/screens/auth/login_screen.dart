@@ -119,7 +119,7 @@ class LoginScreen extends ConsumerWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: _AnimatedTextButton(
-                              onPressed: () {},
+                              onPressed: () => context.push('/forgot-password'),
                               text: 'نسيت كلمة المرور؟',
                               primaryColor: primaryBlue,
                             ),

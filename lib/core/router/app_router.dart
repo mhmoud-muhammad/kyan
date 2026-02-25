@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/api_constants.dart' show ApiConstants;
 import 'package:myapp/core/theme/app_colors.dart';
+import 'package:myapp/presentation/screens/auth/forgot_password_screen.dart';
 import 'package:myapp/presentation/screens/auth/login_screen.dart';
 import 'package:myapp/presentation/screens/auth/students_list_screen.dart';
 import 'package:myapp/presentation/screens/profile/profile_screen.dart';
@@ -108,6 +109,12 @@ final appRouter = GoRouter(
       name: 'teacherHome',
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: TeacherHomeScreen()),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      name: 'ForgotPasswordScreen',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: ForgotPasswordScreen()),
     ),
 
     GoRoute(
