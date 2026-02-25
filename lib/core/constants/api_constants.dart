@@ -98,7 +98,7 @@ class ApiConstants {
   static const String createPickupRequestEndpoint = '/parent/pickup/create/';
 
   static const String updateStudentStatusBase =
-      '/teacher/students/'; // ثم نضيف id والـ action
+      '/teacher/student/'; // ثم نضيف id والـ action
   // ================= DUMMY DATA =================
   static const bool useDummyData = bool.fromEnvironment(
     'USE_DUMMY_DATA',

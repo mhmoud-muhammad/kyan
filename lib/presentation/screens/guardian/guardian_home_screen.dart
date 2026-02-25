@@ -145,11 +145,7 @@ class _AppDrawer extends ConsumerWidget {
               color: AppColors.error,
               onTap: () async {
                 debugPrint('1. onTap: بدأ');
-
-                final shouldLogout = await _showLogoutConfirmationDialog(
-                  context,
-                  ref,
-                );
+                await showLogoutConfirmation(context, ref);
               },
             ),
           ],
@@ -882,10 +878,7 @@ Widget _buildLoadingShimmer() {
   );
 }
 
-Future<void> _showLogoutConfirmationDialog(
-  BuildContext context,
-  WidgetRef ref,
-) async {
+Future<void> showLogoutConfirmation(BuildContext context, WidgetRef ref) async {
   final bool? confirm = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
@@ -915,33 +908,42 @@ Future<void> _showLogoutConfirmationDialog(
           style: TextStyle(height: 1.4),
         ),
 
-        // ===== الأزرار =====
+        // ===== الأزرار في صف واحد بنفس الحجم =====
         actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.pop(context, false),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('إلغاء'),
+                ),
               ),
-            ),
-            child: const Text('إلغاء'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 8), // مسافة بين الزرين
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text(
+                    'تسجيل الخروج',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: const Text(
-              'تسجيل الخروج',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            ],
           ),
         ],
       );
