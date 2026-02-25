@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+// import 'package:myapp/core/errors/failures.dart';
 import 'package:myapp/core/services/websocket_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
@@ -38,7 +39,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
       // تفعيل مستمع الإشعارات
       ref.read(webSocketListenerProvider);
     } catch (e) {
-      print('❌ فشل الاتصال بـ WebSocket: $e');
+      //print('❌ فشل الاتصال بـ WebSocket: $e');
     }
   }
 
@@ -72,7 +73,9 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               // نقطة حمراء إذا كانت هناك إشعارات غير مقروءة
               Consumer(
                 builder: (context, ref, child) {
-                  final notifications = ref.watch(webSocketNotificationsProvider);
+                  final notifications = ref.watch(
+                    webSocketNotificationsProvider,
+                  );
                   if (notifications.isEmpty) return const SizedBox.shrink();
                   return Positioned(
                     left: 30,
@@ -145,7 +148,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha((0.05 * 255).round()),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -158,7 +161,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user?.name ?? 'أستاذ كمال',
+                    user?.name ?? ' المعلم ',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -215,7 +218,9 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      ref.read(webSocketNotificationsProvider.notifier).clearAll();
+                      ref
+                          .read(webSocketNotificationsProvider.notifier)
+                          .clearAll();
                     },
                     child: const Text('تحديد الكل كمقروء'),
                   ),
@@ -248,7 +253,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: index == 0
-            ? AppColors.primary.withOpacity(0.05)
+            ? AppColors.primary.withAlpha((0.05 * 255).round())
             : Colors.transparent,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade100),
@@ -256,7 +261,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: AppColors.primary.withOpacity(0.1),
+            backgroundColor: AppColors.primary.withAlpha((0.1 * 255).round()),
             child: Icon(
               Icons.notifications_active,
               color: AppColors.primary,
@@ -270,7 +275,10 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
               children: [
                 Text(
                   'إشعار جديد',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 Text(
                   message,
@@ -340,9 +348,7 @@ class StatsSection extends ConsumerWidget {
         ],
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Text('خطأ في تحميل الإحصائيات: $err'),
-      ),
+      error: (err, _) => Center(child: Text('خطأ في تحميل الإحصائيات: $err')),
     );
   }
 
@@ -355,9 +361,13 @@ class StatsSection extends ConsumerWidget {
     required String type,
   }) {
     return InkWell(
-      onTap: type == 'total'
+      onTap: null,
+      /*type == 'total'
           ? null // غير قابلة للنقر حالياً
-          : () => context.push('/teacher/students-list/$type', extra: {'title': title}),
+          : () => context.push(
+              '/teacher/students-list/$type',
+              extra: {'title': title},
+            ),*/
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -366,7 +376,7 @@ class StatsSection extends ConsumerWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withAlpha((0.3 * 255).round()),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -416,9 +426,7 @@ class ActiveRequestsSection extends ConsumerWidget {
         requestsAsync.when(
           data: (requests) {
             if (requests.isEmpty) {
-              return const Center(
-                child: Text('لا توجد طلبات نشطة حالياً'),
-              );
+              return const Center(child: Text('لا توجد طلبات نشطة حالياً'));
             }
             return ListView.separated(
               itemCount: requests.length,
@@ -463,7 +471,9 @@ class ActiveRequestCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+          border: Border.all(
+            color: AppColors.primary.withAlpha((0.1 * 255).round()),
+          ),
         ),
         child: Row(
           children: [
@@ -572,46 +582,92 @@ class ActiveRequestCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 3,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: إتمام التسليم عبر API
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle_outline, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'إتمام التسليم',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      return ElevatedButton(
+                        onPressed: () async {
+                          // الحصول على ScaffoldMessenger من الـ Navigator context (الذي يمثل الشاشة الرئيسية)
+                          final messenger = ScaffoldMessenger.of(
+                            Navigator.of(context).context,
+                          );
+
+                          // إغلاق الـ bottom sheet فوراً
+                          Navigator.pop(context);
+
+                          // التحقق من صحة الطالب بعد الإغلاق
+                          if (request.studentId <= 0) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('معرف الطالب غير صالح'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            final result = await ref.read(
+                              updateStudentStatusProvider(
+                                UpdateStatusParams(
+                                  studentId: request.studentId,
+                                  newStatus: 'DELIVERED',
+                                ),
+                              ).future,
+                            );
+
+                            result.fold(
+                              (failure) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('❌ ${failure.message}'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              },
+                              (_) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✅ تم إتمام التسليم بنجاح'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                ref.invalidate(activeRequestsProvider);
+                              },
+                            );
+                          } catch (e) {
+                            // في حالة حدوث استثناء غير متوقع
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('❌ حدث خطأ غير متوقع: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_outline, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'إتمام التسليم',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -688,9 +744,7 @@ class _AppDrawer extends StatelessWidget {
           _buildDrawerItem(
             Icons.logout_rounded,
             'تسجيل الخروج',
-            () {
-              // TODO: تنفيذ تسجيل الخروج
-            },
+            () {},
             isExit: true,
           ),
           const SizedBox(height: 30),
@@ -711,7 +765,7 @@ class _AppDrawer extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 35,
-            backgroundColor: Colors.white.withOpacity(0.2),
+            backgroundColor: Colors.white.withAlpha((0.2 * 255).round()),
             child: const Icon(Icons.person, color: Colors.white, size: 40),
           ),
           const SizedBox(width: 15),
@@ -730,7 +784,7 @@ class _AppDrawer extends StatelessWidget {
                 Text(
                   user?.phone ?? '',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withAlpha((0.7 * 255).round()),
                     fontSize: 14,
                   ),
                 ),
@@ -774,3 +828,5 @@ class _CopyrightFooter extends StatelessWidget {
     );
   }
 }
+
+

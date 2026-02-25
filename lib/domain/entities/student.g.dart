@@ -7,7 +7,7 @@ part of 'student.dart';
 // **************************************************************************
 
 Student _$StudentFromJson(Map<String, dynamic> json) => Student(
-  id: Student._stringFromInt(json['id']),
+  id: (json['id'] as num).toInt(),
   name: json['full_name'] as String,
   schoolName: json['schoolName'] as String?,
   avatarUrl: json['avatarUrl'] as String?,
@@ -32,7 +32,7 @@ const _$AttendanceStatusEnumMap = {
   AttendanceStatus.late: 'LATE',
   AttendanceStatus.excused: 'EXCUSED',
   AttendanceStatus.requested: 'REQUESTED',
-  AttendanceStatus.at_gate: 'AT_GATE',
+  AttendanceStatus.atGate: 'AT_GATE',
   AttendanceStatus.delivered: 'DELIVERED',
   AttendanceStatus.completed: 'COMPLETED',
   AttendanceStatus.unknown: 'unknown',

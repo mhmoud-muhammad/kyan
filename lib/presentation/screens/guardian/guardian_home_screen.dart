@@ -44,7 +44,8 @@ class GuardianHomeScreen extends ConsumerWidget {
             ? Container(
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  // ignore: deprecated_member_use
+                  color: AppColors.primary.withAlpha((0.1 * 255).round()),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -58,7 +59,7 @@ class GuardianHomeScreen extends ConsumerWidget {
                 builder: (context) => Container(
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
@@ -228,7 +229,7 @@ class _AppDrawer extends ConsumerWidget {
               Text(
                 user?.phone ?? '',
                 style: TextStyle(
-                  color: AppColors.onPrimary.withOpacity(0.8),
+                  color: AppColors.onPrimary.withAlpha((0.8 * 255).round()),
                   fontSize: 14,
                 ),
               ),
@@ -249,7 +250,7 @@ class _AppDrawer extends ConsumerWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withAlpha((0.1 * 255).round()),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: color, size: 22),
@@ -357,7 +358,6 @@ class SchoolSelectionView extends ConsumerWidget {
             onRefresh: () => ref.refresh(mySchoolsProvider.future),
           );
         }
-        print('Refreshing schools list...${schools.length} schools...');
         return RefreshIndicator(
           onRefresh: () => ref.refresh(mySchoolsProvider.future),
           color: AppColors.primary,
@@ -391,13 +391,6 @@ class SchoolSelectionView extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, int count) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Container(padding: const EdgeInsets.all(20)),
-    );
-  }
-
   Widget _buildSchoolCard(BuildContext context, WidgetRef ref, School school) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -417,7 +410,7 @@ class SchoolSelectionView extends ConsumerWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
@@ -444,7 +437,9 @@ class SchoolSelectionView extends ConsumerWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight.withOpacity(0.2),
+                          color: AppColors.primaryLight.withAlpha(
+                            (0.2 * 255).round(),
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -458,7 +453,7 @@ class SchoolSelectionView extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -532,51 +527,48 @@ class StudentAttendanceCard extends ConsumerWidget {
   StudentAttendanceCard({super.key, required this.student, this.index = 0});
 
   Map<String, dynamic> _getStatusInfo(AttendanceStatus status) {
-    print(
-      'Determining status info for student ${student.name} with status: $status',
-    );
     switch (status) {
       case AttendanceStatus.present:
         return {
           'color': AppColors.success,
           'icon': Icons.check_circle_rounded,
           'text': 'حاضر',
-          'bg': AppColors.success.withOpacity(0.1),
+          'bg': AppColors.success.withAlpha((0.1 * 255).round()),
         };
       case AttendanceStatus.absent:
         return {
           'color': AppColors.error,
           'icon': Icons.cancel_rounded,
           'text': 'غائب',
-          'bg': AppColors.error.withOpacity(0.1),
+          'bg': AppColors.error.withAlpha((0.1 * 255).round()),
         };
       case AttendanceStatus.late:
         return {
           'color': const Color(0xFFFF8C42),
           'icon': Icons.access_time_filled_rounded,
           'text': 'متأخر',
-          'bg': const Color(0xFFFF8C42).withOpacity(0.1),
+          'bg': const Color(0xFFFF8C42).withAlpha((0.1 * 255).round()),
         };
       case AttendanceStatus.requested:
         return {
           'color': AppColors.primary,
           'icon': Icons.send_rounded,
           'text': 'تم الطلب',
-          'bg': AppColors.primary.withOpacity(0.1),
+          'bg': AppColors.primary.withAlpha((0.1 * 255).round()),
         };
-      case AttendanceStatus.at_gate:
+      case AttendanceStatus.atGate:
         return {
           'color': AppColors.primaryDark,
           'icon': Icons.meeting_room_rounded,
           'text': 'عند البوابة',
-          'bg': AppColors.primaryDark.withOpacity(0.1),
+          'bg': AppColors.primaryDark.withAlpha((0.1 * 255).round()),
         };
       default:
         return {
           'color': AppColors.textHint,
           'icon': Icons.help_outline_rounded,
           'text': 'غير معروف',
-          'bg': AppColors.textHint.withOpacity(0.1),
+          'bg': AppColors.textHint.withAlpha((0.1 * 255).round()),
         };
     }
   }
@@ -632,7 +624,7 @@ class StudentAttendanceCard extends ConsumerWidget {
         margin: const EdgeInsets.only(bottom: 16),
         child: Material(
           elevation: 2,
-          shadowColor: AppColors.textHint.withOpacity(0.1),
+          shadowColor: AppColors.textHint.withAlpha((0.1 * 255).round()),
           borderRadius: BorderRadius.circular(20),
           color: AppColors.surface,
           child: Padding(
@@ -701,35 +693,40 @@ class StudentAttendanceCard extends ConsumerWidget {
                           ? null
                           : () async {
                               // طلب الموقع
-                              final position = await locationService
+                              final result = await locationService
                                   .getCurrentLocation();
-                              if (position == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      '❌ لم نتمكن من الحصول على موقعك. تأكد من تفعيل GPS',
+
+                              result.fold(
+                                (failure) {
+                                  // عرض رسالة خطأ للمستخدم بطريقة لطيفة
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'حدث خطأ: ${failure.message}',
+                                      ),
                                     ),
-                                    backgroundColor: AppColors.error,
-                                  ),
-                                );
-                                return;
-                              }
-                              ref
-                                  .read(
-                                    pickupRequestForStudentProvider(
-                                      student.id,
-                                    ).notifier,
-                                  )
-                                  .sendRequest(
-                                    lat: position.latitude,
-                                    lng: position.longitude,
                                   );
+                                },
+                                (position) {
+                                  // هنا نضمن أن position صحيح
+                                  ref
+                                      .read(
+                                        pickupRequestForStudentProvider(
+                                          student.id,
+                                        ).notifier,
+                                      )
+                                      .sendRequest(
+                                        lat: position.latitude,
+                                        lng: position.longitude,
+                                      );
+                                },
+                              );
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.onPrimary,
-                        disabledBackgroundColor: AppColors.textHint.withOpacity(
-                          0.3,
+                        disabledBackgroundColor: AppColors.textHint.withAlpha(
+                          (0.3 * 255).round(),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -793,13 +790,13 @@ Widget _buildEmptyState({
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight.withOpacity(0.2),
+              color: AppColors.primaryLight.withAlpha((0.2 * 255).round()),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
               size: 64,
-              color: AppColors.primary.withOpacity(0.5),
+              color: AppColors.primary.withAlpha((0.5 * 255).round()),
             ),
           ),
           const SizedBox(height: 24),
@@ -844,7 +841,7 @@ Widget _buildErrorState({
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.error.withOpacity(0.1),
+              color: AppColors.error.withAlpha((0.1 * 255).round()),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -894,7 +891,7 @@ Widget _buildLoadingShimmer() {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.textHint.withOpacity(0.1),
+              color: AppColors.textHint.withAlpha((0.1 * 255).round()),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -908,7 +905,7 @@ Widget _buildLoadingShimmer() {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withOpacity(0.3),
+                  color: AppColors.primaryLight.withAlpha((0.3 * 255).round()),
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
@@ -922,7 +919,9 @@ Widget _buildLoadingShimmer() {
                       width: double.infinity,
                       height: 16,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withOpacity(0.3),
+                        color: AppColors.primaryLight.withAlpha(
+                          (0.3 * 255).round(),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -931,7 +930,9 @@ Widget _buildLoadingShimmer() {
                       width: 100,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withOpacity(0.3),
+                        color: AppColors.primaryLight.withAlpha(
+                          (0.3 * 255).round(),
+                        ),
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),

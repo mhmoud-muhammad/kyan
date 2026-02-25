@@ -5,9 +5,9 @@ import 'package:myapp/domain/entities/student.dart';
 
 abstract class GuardianRepository {
   Future<Either<Failure, List<School>>> getMySchools();
-  Future<Either<Failure, List<Student>>> getStudentsBySchool(String schoolId);
+  Future<Either<Failure, List<Student>>> getStudentsBySchool(int schoolId);
   Future<Either<Failure, void>> createPickupRequest(
-    String studentId, {
+    int studentId, {
     double? lat,
     double? lng,
   });

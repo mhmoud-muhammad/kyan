@@ -15,7 +15,6 @@ class StatsDetailsScreen extends ConsumerWidget {
     final extra = GoRouterState.of(context).extra as Map<String, dynamic>;
     final type = extra['type'] as String;
     final title = extra['title'] as String;
-    final count = extra['count'] as int;
     final color = Color(extra['color'] as int);
 
     // ✅ جلب الطلاب حسب النوع (يتكامل مع DummyData أو API حسب البيئة)
@@ -157,7 +156,7 @@ class StatsDetailsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha((0.1 * 255).round()),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -170,7 +169,7 @@ class StatsDetailsScreen extends ConsumerWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.child_care_rounded, color: color, size: 30),
@@ -217,7 +216,7 @@ class StatsDetailsScreen extends ConsumerWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -248,7 +247,7 @@ class StatsDetailsScreen extends ConsumerWidget {
         return 'متأخر';
       case AttendanceStatus.requested:
         return 'قيد الطلب';
-      case AttendanceStatus.at_gate:
+      case AttendanceStatus.atGate:
         return 'عند البوابة';
       case AttendanceStatus.delivered:
         return 'تم التسليم';

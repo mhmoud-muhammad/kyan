@@ -46,6 +46,23 @@ final createPickupRequestUseCaseProvider =
 // ignore: unused_element
 typedef CreatePickupRequestUseCaseRef =
     AutoDisposeProviderRef<CreatePickupRequestUseCase>;
+String _$locationServiceHash() => r'f7b3dbe3e362693a99dbd0c857f576f80a3f5f74';
+
+/// See also [locationService].
+@ProviderFor(locationService)
+final locationServiceProvider = AutoDisposeProvider<LocationService>.internal(
+  locationService,
+  name: r'locationServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$locationServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LocationServiceRef = AutoDisposeProviderRef<LocationService>;
 String _$guardianRepositoryHash() =>
     r'28e2f09ef71c719cbbe64a97e93d94fd05d42998';
 
@@ -104,7 +121,7 @@ final getStudentsBySchoolUseCaseProvider =
 // ignore: unused_element
 typedef GetStudentsBySchoolUseCaseRef =
     AutoDisposeProviderRef<GetStudentsBySchoolUseCase>;
-String _$mySchoolsHash() => r'af352b225e33baea8b9f327af05a0be0f75cdc65';
+String _$mySchoolsHash() => r'05f5c3e98d524f7af29891cc50c6c8d326a163bd';
 
 /// See also [mySchools].
 @ProviderFor(mySchools)
@@ -121,7 +138,7 @@ final mySchoolsProvider = AutoDisposeFutureProvider<List<School>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MySchoolsRef = AutoDisposeFutureProviderRef<List<School>>;
-String _$studentsBySchoolHash() => r'd0f03d40e864074d3552c6137aced82fafc4ab75';
+String _$studentsBySchoolHash() => r'ae40b7b1469f21f645a4254e2fadc4f7fb080521';
 
 /// See also [studentsBySchool].
 @ProviderFor(studentsBySchool)
@@ -140,7 +157,7 @@ final studentsBySchoolProvider =
 // ignore: unused_element
 typedef StudentsBySchoolRef = AutoDisposeFutureProviderRef<List<Student>>;
 String _$pickupRequestForStudentHash() =>
-    r'6b7303fdd63ca66e9e2c5ed6376c9d770af7ca5f';
+    r'b67664f00af76d1a89fe76915ebbe55141d67097';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -165,9 +182,9 @@ class _SystemHash {
 
 abstract class _$PickupRequestForStudent
     extends BuildlessAutoDisposeNotifier<AsyncValue<void>> {
-  late final String studentId;
+  late final int studentId;
 
-  AsyncValue<void> build(String studentId);
+  AsyncValue<void> build(int studentId);
 }
 
 /// See also [PickupRequestForStudent].
@@ -180,7 +197,7 @@ class PickupRequestForStudentFamily extends Family<AsyncValue<void>> {
   const PickupRequestForStudentFamily();
 
   /// See also [PickupRequestForStudent].
-  PickupRequestForStudentProvider call(String studentId) {
+  PickupRequestForStudentProvider call(int studentId) {
     return PickupRequestForStudentProvider(studentId);
   }
 
@@ -214,7 +231,7 @@ class PickupRequestForStudentProvider
           AsyncValue<void>
         > {
   /// See also [PickupRequestForStudent].
-  PickupRequestForStudentProvider(String studentId)
+  PickupRequestForStudentProvider(int studentId)
     : this._internal(
         () => PickupRequestForStudent()..studentId = studentId,
         from: pickupRequestForStudentProvider,
@@ -238,7 +255,7 @@ class PickupRequestForStudentProvider
     required this.studentId,
   }) : super.internal();
 
-  final String studentId;
+  final int studentId;
 
   @override
   AsyncValue<void> runNotifierBuild(
@@ -289,7 +306,7 @@ class PickupRequestForStudentProvider
 mixin PickupRequestForStudentRef
     on AutoDisposeNotifierProviderRef<AsyncValue<void>> {
   /// The parameter `studentId` of this provider.
-  String get studentId;
+  int get studentId;
 }
 
 class _PickupRequestForStudentProviderElement
@@ -302,10 +319,10 @@ class _PickupRequestForStudentProviderElement
   _PickupRequestForStudentProviderElement(super.provider);
 
   @override
-  String get studentId => (origin as PickupRequestForStudentProvider).studentId;
+  int get studentId => (origin as PickupRequestForStudentProvider).studentId;
 }
 
-String _$pickupRequestHash() => r'd71488f183fa0391011dcba75799c54645d65a70';
+String _$pickupRequestHash() => r'f3fd042cafd5c8e672af0ebad17c3e3e2f8fa000';
 
 /// See also [PickupRequest].
 @ProviderFor(PickupRequest)

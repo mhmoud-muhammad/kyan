@@ -20,7 +20,7 @@ class WebSocketService {
     if (token == null) throw Exception('No authentication token');
 
     // تحويل baseUrl من https إلى ws
-    final wsBase = ApiConstants.baseUrl.replaceFirst('https', 'ws');
+    final wsBase = ApiConstants.domain.replaceFirst('https', 'ws');
     final url = '$wsBase/ws/pickup/teacher/?token=$token';
 
     _channel = WebSocketChannel.connect(Uri.parse(url));
@@ -30,11 +30,10 @@ class WebSocketService {
         _messageController.add(data);
       },
       onError: (error) {
-        print('WebSocket error: $error');
-        // يمكن إعادة المحاولة هنا
+        //print('WebSocket error: $error');
       },
       onDone: () {
-        print('WebSocket connection closed');
+        //print('WebSocket connection closed');
       },
     );
   }

@@ -129,7 +129,7 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withAlpha((0.03 * 255).round()),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -152,7 +152,7 @@ class SettingsScreen extends ConsumerWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: AppColors.primary.withAlpha((0.1 * 255).round()),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: AppColors.primary, size: 22),
@@ -183,7 +183,7 @@ class SettingsScreen extends ConsumerWidget {
         onPressed: () => _handleLogout(ref, context),
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: AppColors.error.withOpacity(0.1),
+          backgroundColor: AppColors.error.withAlpha((0.1 * 255).round()),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),

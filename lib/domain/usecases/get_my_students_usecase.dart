@@ -9,7 +9,7 @@ class GetStudentsBySchoolUseCase {
 
   GetStudentsBySchoolUseCase(this.repository);
 
-  Future<Either<Failure, List<Student>>> call(String schoolId) {
+  Future<Either<Failure, List<Student>>> call(int schoolId) {
     return repository.getStudentsBySchool(schoolId);
   }
 }

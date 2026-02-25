@@ -5,27 +5,25 @@ part 'school.g.dart';
 
 @JsonSerializable()
 class School {
-  @JsonKey(fromJson: _stringFromInt)
-  final String id;
-  
+  @JsonKey(fromJson: _intFromDynamic)
+  final int id;
+
   final String name;
-  
-  // ✅✅✅ التعديل هنا: السماح بأن يكون الحقل null ✅✅✅
+
   @JsonKey(name: 'public_code')
-  final String? publicCode; 
-  
+  final String? publicCode;
+
   @JsonKey(name: 'is_active')
   final bool isActive;
 
   School({
     required this.id,
     required this.name,
-    this.publicCode, // تم جعله اختياريًا هنا أيضًا
+    this.publicCode,
     required this.isActive,
   });
 
-  static String _stringFromInt(dynamic id) => id.toString();
-
+static int _intFromDynamic(dynamic value) => value is int ? value : int.parse(value.toString());
   factory School.fromJson(Map<String, dynamic> json) => _$SchoolFromJson(json);
 
   Map<String, dynamic> toJson() => _$SchoolToJson(this);

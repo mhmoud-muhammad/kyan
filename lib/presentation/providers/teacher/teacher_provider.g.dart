@@ -80,7 +80,7 @@ final activeRequestsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ActiveRequestsRef = AutoDisposeFutureProviderRef<List<ActiveRequest>>;
-String _$studentsByStatusHash() => r'f9911fed3136be0f73be368109a315496e69ca20';
+String _$studentsByStatusHash() => r'c1f0ba1d584343ae72c887905ab9b7f36dbe44fa';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -222,7 +222,7 @@ class _StudentsByStatusProviderElement
   String get statusType => (origin as StudentsByStatusProvider).statusType;
 }
 
-String _$webSocketListenerHash() => r'ab3673b4e995edd327dcc746796aeec5082d1091';
+String _$webSocketListenerHash() => r'f84d1221c8afc014badafa2e91be08ed692097c8';
 
 /// See also [webSocketListener].
 @ProviderFor(webSocketListener)

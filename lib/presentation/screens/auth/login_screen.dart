@@ -32,16 +32,7 @@ class LoginScreen extends ConsumerWidget {
           await tokenManager.storage.read(key: StorageKeys.accessToken);
           await tokenManager.storage.read(key: StorageKeys.refreshToken);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '✅ تم تسجيل الدخول بنجاح\nالدور: ${user.role}',
-                maxLines: 3,
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+if (!context.mounted) return; // ✅ تحقق من mounted قبل استخدام context
 
           if (user.role == 'TEACHER') {
             context.go('/teacher');
@@ -223,8 +214,8 @@ class __AnimatedBackgroundState extends State<_AnimatedBackground>
             height: 200,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: widget.accentBlue.withOpacity(
-                0.3 + _controller.value * 0.2,
+              color: widget.accentBlue.withAlpha(
+                (0.8* 255 + _controller.value * 0.2).round()
               ),
             ),
           ),
@@ -279,7 +270,7 @@ class __AnimatedLogoState extends State<_AnimatedLogo>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withAlpha((0.05* 255).round()),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -385,7 +376,7 @@ class __AnimatedTextFieldState extends State<_AnimatedTextField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: widget.primaryColor.withOpacity(0.3),
+                        color: widget.primaryColor.withAlpha((0.3 * 255).round()),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -464,7 +455,7 @@ class __AnimatedTextButtonState extends State<_AnimatedTextButton> {
         child: Text(
           widget.text,
           style: TextStyle(
-            color: widget.primaryColor.withOpacity(0.8),
+            color: widget.primaryColor.withAlpha((0.8* 255).round()),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -536,7 +527,7 @@ class _AnimatedFooter extends StatelessWidget {
             width: 40,
             height: 2,
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.2),
+              color: primaryColor.withAlpha((0.2 * 255).round()),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -556,7 +547,7 @@ class _AnimatedFooter extends StatelessWidget {
           Text(
             'الكيان الرقمي - Digital Entity',
             style: TextStyle(
-              color: primaryColor.withOpacity(0.6),
+              color: primaryColor.withAlpha((0.6 * 255).round()),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -613,7 +604,7 @@ class _LoadingOverlayState extends State<_LoadingOverlay>
           opacity: 1,
           duration: const Duration(milliseconds: 300),
           child: Container(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha((0.3 * 255).round()),
             child: Center(
               child: FadeTransition(
                 opacity: _fadeAnimation,
@@ -680,7 +671,7 @@ class _ErrorOverlay extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
           child: Container(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha((0.3 * 255).round()),
             child: Center(
               child: Container(
                 padding: const EdgeInsets.all(25),

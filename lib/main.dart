@@ -1,16 +1,60 @@
 // lib/main.dart
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-//import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/kyan.dart';
+
+// Provider للوصول إلى مثيل الإشعارات في أي مكان
+final flutterLocalNotificationsPluginProvider =
+    Provider<FlutterLocalNotificationsPlugin>((ref) {
+      throw UnimplementedError('Must be overridden after initialization');
+    });
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  //final storage = const FlutterSecureStorage();
+  // إعدادات الإشعارات
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  final DarwinInitializationSettings initializationSettingsIOS =
+      DarwinInitializationSettings();
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsIOS,
+  );
 
-  runApp(const ProviderScope(child: KyanApp()));
+  // إنشاء مثيل الإشعارات وتهيئته باستخدام المعامل المسمى settings
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin.initialize(
+    settings: initializationSettings,
+    // يمكنك إضافة معالج للنقر على الإشعارات هنا إذا أردت
+    // onDidReceiveNotificationResponse: (NotificationResponse response) {},
+  );
+
+  // طلب أذونات iOS إذا لزم الأمر
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+  }
+
+  // تجاوز قيمة provider بالمثيل الذي أنشأناه
+  final container = ProviderContainer(
+    overrides: [
+      flutterLocalNotificationsPluginProvider.overrideWithValue(
+        flutterLocalNotificationsPlugin,
+      ),
+    ],
+  );
+
+  runApp(
+    UncontrolledProviderScope(container: container, child: const KyanApp()),
+  );
 }
 
 class KyanApp extends StatelessWidget {
@@ -35,7 +79,7 @@ class KyanApp extends StatelessWidget {
 
       // Theme
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.lightTheme, // Using light theme for both modes in this example
+      darkTheme: null, 
       themeMode: ThemeMode.light,
 
       // Router

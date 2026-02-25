@@ -65,15 +65,6 @@ class ProfileScreen extends ConsumerWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Column(
-                      children: [
-                        _buildTile(
-                          Icons.phone,
-                          'رقم الهاتف',
-                          user.phone ?? 'غير متوفر',
-                        ),
-                      ],
-                    ),
                   ),
                 ),
 
@@ -114,11 +105,11 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTile(IconData icon, String title, String value) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: Text(value),
-    );
-  }
+  // Widget _buildTile(IconData icon, String title, String value) {
+  //   return ListTile(
+  //     leading: Icon(icon),
+  //     title: Text(title),
+  //     subtitle: Text(value),
+  //   );
+  // }
 }

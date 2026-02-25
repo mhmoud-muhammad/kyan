@@ -19,7 +19,7 @@ class GuardianRepositoryImpl implements GuardianRepository {
 
   @override
   Future<Either<Failure, void>> createPickupRequest(
-    String studentId, {
+    int studentId, {
     double? lat,
     double? lng,
   }) async {
@@ -47,14 +47,14 @@ class GuardianRepositoryImpl implements GuardianRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      print("🔥 خطأ غير متوقع: $e");
+     // print("🔥 خطأ غير متوقع: $e");
       return Left(ServerFailure('خطأ غير متوقع في جلب المدارس.'));
     }
   }
 
   @override
   Future<Either<Failure, List<Student>>> getStudentsBySchool(
-    String schoolId,
+    int schoolId,
   ) async {
     if (!await networkInfo.isConnected) return Left(NetworkFailure());
     try {
@@ -65,7 +65,7 @@ class GuardianRepositoryImpl implements GuardianRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      print("❌ Unexpected error in getStudentsBySchool: $e");
+     // print("❌ Unexpected error in getStudentsBySchool: $e");
       return Left(ServerFailure('حدث خطأ غير متوقع في جلب الطلاب.'));
     }
   }

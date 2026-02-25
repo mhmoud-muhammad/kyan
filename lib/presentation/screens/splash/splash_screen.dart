@@ -66,41 +66,47 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _checkAuth();
   }
 
-  Future<void> _checkAuth() async {
-    // ننتظر انتهاء الأنيميشن الأساسي (أو وقت كافٍ)
-    await Future.delayed(const Duration(milliseconds: 3000));
+ Future<void> _checkAuth() async {
+  // ننتظر انتهاء الأنيميشن أو وقت كافٍ
+  await Future.delayed(const Duration(milliseconds: 3000));
 
-    final localDataSource = ref.read(authLocalDataSourceProvider);
-    final isAuthenticated = await localDataSource.hasValidToken();
+  if (!mounted) return;
 
+  final localDataSource = ref.read(authLocalDataSourceProvider);
+  final isAuthenticated = await localDataSource.hasValidToken();
+
+  if (!mounted) return; // ✅ تحقق من mounted بعد async call
+
+  if (!isAuthenticated) {
     if (!mounted) return;
-
-    if (isAuthenticated) {
-      final user = await localDataSource.getCachedUser();
-      if (user != null) {
-        final role = user.role.toUpperCase();
-        switch (role) {
-          case 'PARENT':
-          case 'GUARDIAN':
-            context.go('/guardian');
-            break;
-          case 'TEACHER':
-            context.go('/teacher');
-            break;
-          case 'MANAGER':
-            context.go('/manager');
-            break;
-          default:
-            context.go('/login');
-        }
-      } else {
-        context.go('/login');
-      }
-    } else {
-      context.go('/login');
-    }
+    context.go('/login');
+    return;
   }
 
+  final user = await localDataSource.getCachedUser();
+
+  if (!mounted) return; // ✅ تحقق من mounted قبل استخدام context
+  if (user == null) {
+    context.go('/login');
+    return;
+  }
+
+  final role = user.role.toUpperCase();
+  switch (role) {
+    case 'PARENT':
+    case 'GUARDIAN':
+      context.go('/guardian');
+      break;
+    case 'TEACHER':
+      context.go('/teacher');
+      break;
+    case 'MANAGER':
+      context.go('/manager');
+      break;
+    default:
+      context.go('/login');
+  }
+}
   @override
   void dispose() {
     _controller.dispose();
@@ -136,7 +142,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withAlpha((0.15 * 255).round()),
                         blurRadius: 30,
                         spreadRadius: 5,
                         offset: const Offset(0, 10),
@@ -171,7 +177,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             letterSpacing: 1.2,
                             shadows: [
                               Shadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withAlpha((0.3 * 255).round()),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -183,7 +189,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           width: 40,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.5),
+                            color: Colors.white.withAlpha((0.5 * 255).round()),
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),

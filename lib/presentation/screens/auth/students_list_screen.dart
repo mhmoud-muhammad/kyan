@@ -123,7 +123,7 @@ class StudentsListScreen extends ConsumerWidget {
       case AttendanceStatus.requested:
         statusColor = const Color(0xFFFF8C42);
         break;
-      case AttendanceStatus.at_gate:
+      case AttendanceStatus.atGate:
         statusColor = AppColors.primaryDark;
         break;
       case AttendanceStatus.delivered:
@@ -142,7 +142,7 @@ class StudentsListScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha((0.1 * 255).round()),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -155,7 +155,7 @@ class StudentsListScreen extends ConsumerWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -206,7 +206,7 @@ class StudentsListScreen extends ConsumerWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -292,7 +292,7 @@ class StudentsListScreen extends ConsumerWidget {
         return 'متأخر';
       case AttendanceStatus.requested:
         return 'قيد الطلب';
-      case AttendanceStatus.at_gate:
+      case AttendanceStatus.atGate:
         return 'عند البوابة';
       case AttendanceStatus.delivered:
         return 'تم التسليم';

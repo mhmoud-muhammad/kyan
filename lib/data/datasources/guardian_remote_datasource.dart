@@ -4,16 +4,19 @@ import 'package:myapp/core/network/api_client.dart';
 import 'package:myapp/domain/entities/school.dart';
 import 'package:myapp/domain/entities/student.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'; // لـ kDebugMode
 
 abstract class GuardianRemoteDataSource {
   Future<List<School>> getMySchools();
-  Future<List<Student>> getStudentsBySchool(String schoolId);
+  Future<List<Student>> getStudentsBySchool(int schoolId);
   Future<void> createPickupRequest(
-    String studentId, {
+    int studentId, {
     double? lat,
     double? lng,
   });
 }
+
+
 
 class GuardianRemoteDataSourceImpl implements GuardianRemoteDataSource {
   final ApiClient apiClient;
@@ -32,6 +35,7 @@ void _handleDioError(DioException e) {
     );
   }
 }
+
 
   @override
   Future<List<School>> getMySchools() async {
@@ -57,76 +61,54 @@ void _handleDioError(DioException e) {
     }
   }
 
-  // @override
-  // Future<void> createPickupRequest(
-  //   String studentId, {
-  //   double? lat,
-  //   double? lng,
-  // }) async {
-  //   final Map<String, dynamic> body = {'student': int.parse(studentId)};
-  //   if (lat != null && lng != null) {
-  //     body['lat'] = lat;
-  //     body['lng'] = lng;
-  //     // جرب أيضاً باستخدام latitude/longitude
-  //     // body['latitude'] = lat;
-  //     // body['longitude'] = lng;
-  //   }
-  //   print('📡 Sending pickup request with location: $body');
-  //   final response = await apiClient.post(
-  //     ApiConstants.createPickupRequestEndpoint,
-  //     data: body,
-  //   );
-  //   print('📡 Response status: ${response.statusCode}');
-  //   print('📡 Response data: ${response.data}');
-
-  //   if (response.statusCode != 200 && response.statusCode != 201) {
-  //     throw ServerException(
-  //       'فشل إنشاء الطلب: ${response.statusCode} - ${response.data}',
-  //     );
-  //   }
-  // }
-
 @override
 Future<void> createPickupRequest(
-  String studentId, {
+  int studentId, {
   double? lat,
   double? lng,
 }) async {
   try {
-    final Map<String, dynamic> body = {
-      'student': int.parse(studentId),
+    final body = {
+      'student': studentId,
+      if (lat != null && lng != null) ...{
+        'lat': lat,
+        'lng': lng,
+      }
     };
 
-    if (lat != null && lng != null) {
-      body['lat'] = lat;
-      body['lng'] = lng;
+    if (kDebugMode) {
+      debugPrint('📡 [PickupRequest] Endpoint: '
+          '${ApiConstants.createPickupRequestEndpoint}');
+      debugPrint('📡 [PickupRequest] Body: $body');
     }
-
-    print('📡 Sending pickup request with location: $body');
 
     final response = await apiClient.post(
       ApiConstants.createPickupRequestEndpoint,
       data: body,
     );
 
-    print('📡 Response status: ${response.statusCode}');
-    print('📡 Response data: ${response.data}');
-
-    if (response.statusCode != 200 &&
-        response.statusCode != 201) {
-      throw ServerException(
-        'فشل إنشاء الطلب: ${response.statusCode}',
-      );
+    if (kDebugMode) {
+      debugPrint('✅ [PickupRequest] Status: ${response.statusCode}');
+      debugPrint('✅ [PickupRequest] Response: ${response.data}');
     }
 
   } on DioException catch (e) {
-    print('❌ Dio error: ${e.response?.statusCode}');
-    print('❌ Dio error body: ${e.response?.data}');
+    if (kDebugMode) {
+      debugPrint('❌ [PickupRequest] Dio Error: ${e.response?.statusCode}');
+      debugPrint('❌ [PickupRequest] Error Body: ${e.response?.data}');
+      debugPrint('❌ [PickupRequest] Message: ${e.message}');
+    }
+
     _handleDioError(e);
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('❌ [PickupRequest] Unexpected Error: $e');
+    }
+    rethrow;
   }
 }
   @override
-  Future<List<Student>> getStudentsBySchool(String schoolId) async {
+  Future<List<Student>> getStudentsBySchool(int schoolId) async {
     try {
       final response = await apiClient.get(
         ApiConstants.parentStudentsEndpoint,
@@ -137,13 +119,13 @@ Future<void> createPickupRequest(
         final List<dynamic> data = response.data;
         return data.map((json) => Student.fromJson(json)).toList();
       } else {
-        print(
-          '❌ getStudentsBySchool failed: status=${response.statusCode}, data=${response.data}',
-        );
+        // print(
+        //   '❌ getStudentsBySchool failed: status=${response.statusCode}, data=${response.data}',
+        // );
         throw ServerException('فشل تحميل الطلاب: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ getStudentsBySchool exception: $e');
+      //print('❌ getStudentsBySchool exception: $e');
       throw ServerException(e.toString());
     }
   }

@@ -1,9 +1,7 @@
 // lib/data/repositories/auth_repository_impl.dart
 
 import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
 import 'package:myapp/core/errors/exception_mapper.dart';
-import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/network/token_manager.dart';
 import 'package:myapp/domain/entities/auth_response.dart';
 import 'package:myapp/domain/entities/user.dart';

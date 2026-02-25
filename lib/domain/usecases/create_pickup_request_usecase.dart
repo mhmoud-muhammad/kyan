@@ -8,8 +8,8 @@ class CreatePickupRequestUseCase {
 
   CreatePickupRequestUseCase(this.repository);
 
-  Future<Either<Failure, void>> call(String studentId, {double? lat, double? lng}) {
-    print('CreatePickupRequestUseCase: Sending pickup request for studentId: $studentId');
+  Future<Either<Failure, void>> call(int studentId, {double? lat, double? lng}) {
+    //print('CreatePickupRequestUseCase: Sending pickup request for studentId: $studentId');
     return repository.createPickupRequest(studentId, lat: lat, lng: lng);
   }
 }

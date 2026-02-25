@@ -16,7 +16,7 @@ enum AttendanceStatus {
   @JsonValue('REQUESTED')
   requested,
   @JsonValue('AT_GATE')
-  at_gate,
+  atGate,
   @JsonValue('DELIVERED')
   delivered,
   @JsonValue('COMPLETED')
@@ -28,14 +28,12 @@ enum AttendanceStatus {
 
 @JsonSerializable()
 class Student {
-  // تحويل id إلى String لضمان التوافق
-  @JsonKey(fromJson: _stringFromInt)
-  final String id;
+
+  final int id;
 
   @JsonKey(name: 'full_name')
   final String name;
-  
-  // الحقول التالية اختيارية لأنها لا تأتي من كل الـ Endpoints
+
   final String? schoolName;
   final String? avatarUrl;
 
@@ -50,10 +48,9 @@ class Student {
     required this.status,
   });
 
-  // دالة مساعدة لتحويل الـ id إذا كان int
-  static String _stringFromInt(dynamic id) => id.toString();
-
-  factory Student.fromJson(Map<String, dynamic> json) => _$StudentFromJson(json);
+  factory Student.fromJson(Map<String, dynamic> json)
+      => _$StudentFromJson(json);
 
   Map<String, dynamic> toJson() => _$StudentToJson(this);
 }
+

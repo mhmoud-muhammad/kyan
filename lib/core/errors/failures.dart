@@ -46,3 +46,7 @@ class CacheFailure extends Failure {
 class AuthFailure extends Failure {
   AuthFailure([super.message = 'خطأ في بيانات الدخول']);
 }
+
+class LocationFailure extends Failure {
+  LocationFailure([super.message = 'فشل الحصول على الموقع']);
+}

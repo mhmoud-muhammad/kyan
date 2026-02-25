@@ -47,7 +47,7 @@ class ApiConstants {
 //اختلاف في نقطه النهايخ بالنسبه للتحديث التوكن فقط
 // لانو الباك اند بستخدم الريفريش توكن بدون الاصدار
   static String get refUrl => '$_baseDomain/api$refreshTokenEndpoint';
-
+  static String get domain => _baseDomain;
   static String get baseUrl => '$_baseDomain/api/$apiVersion';
   // ================= AUTH ENDPOINTS =================
 
@@ -98,7 +98,7 @@ class ApiConstants {
   static const String createPickupRequestEndpoint = '/parent/pickup/create/';
 
   static const String updateStudentStatusBase =
-      '/teacher/student/'; // ثم نضيف id والـ action
+      '/teacher/students/'; // ثم نضيف id والـ action
   // ================= DUMMY DATA =================
   static const bool useDummyData = bool.fromEnvironment(
     'USE_DUMMY_DATA',

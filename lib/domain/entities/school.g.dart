@@ -7,7 +7,7 @@ part of 'school.dart';
 // **************************************************************************
 
 School _$SchoolFromJson(Map<String, dynamic> json) => School(
-  id: School._stringFromInt(json['id']),
+  id: School._intFromDynamic(json['id']),
   name: json['name'] as String,
   publicCode: json['public_code'] as String?,
   isActive: json['is_active'] as bool,
