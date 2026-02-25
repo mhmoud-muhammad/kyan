@@ -150,7 +150,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     ],
                   ),
                   child: Image.asset(
-                    'assets/images/kyan.png',
+                    'assets/images/kyan3.png',
                     fit: BoxFit.contain,
                   ),
                 ),

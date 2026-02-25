@@ -692,35 +692,15 @@ class StudentAttendanceCard extends ConsumerWidget {
                       onPressed: isLoading
                           ? null
                           : () async {
-                              // طلب الموقع
-                              final result = await locationService
-                                  .getCurrentLocation();
-
-                              result.fold(
-                                (failure) {
-                                  // عرض رسالة خطأ للمستخدم بطريقة لطيفة
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'حدث خطأ: ${failure.message}',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                (position) {
-                                  // هنا نضمن أن position صحيح
-                                  ref
+                               ref
                                       .read(
                                         pickupRequestForStudentProvider(
                                           student.id,
                                         ).notifier,
                                       )
                                       .sendRequest(
-                                        lat: position.latitude,
-                                        lng: position.longitude,
+                                       
                                       );
-                                },
-                              );
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

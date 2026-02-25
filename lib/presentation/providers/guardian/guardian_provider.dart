@@ -42,30 +42,42 @@ class PickupRequestForStudent extends _$PickupRequestForStudent {
   @override
   AsyncValue<void> build(int studentId) => const AsyncData(null);
 
-  Future<void> sendRequest({double? lat, double? lng}) async {
-    state = const AsyncLoading();
-    //final locationService = ref.read(locationServiceProvider);
-   // final locationResult = await locationService.getCurrentLocation();
-    final useCase = ref.read(createPickupRequestUseCaseProvider);
-    //final result = await useCase(studentId, lat: lat, lng: lng); لمن نتحول لي بيئه الانتاجلازم نحولها الى المتغيرات بدلا من الارقان الثابته
-    final result = await useCase(studentId, lat: 17.694694, lng: 33.981445);
+  Future<void> sendRequest() async {
+  // 1️⃣ تحويل الزر إلى حالة التحميل فورًا
+  state = const AsyncLoading();
 
-    state = result.fold(
-      (failure) {
-        // print(
-        //   '❌ Pickup request failed for student $studentId: ${failure.message}',
-        // );
-        if (failure is UnauthorizedFailure) {
-          ref.read(authStateProvider.notifier).logout();
-        }
-        return AsyncError(failure.message, StackTrace.current);
-      },
-      (_) {
-       // print('✅ Pickup request succeeded for student $studentId');
-        return const AsyncData(null);
-      },
-    );
-  }
+  // 2️⃣ الحصول على الموقع
+  final locationService = ref.read(locationServiceProvider);
+  final locationResult = await locationService.getCurrentLocation();
+
+  // التعامل مع نتيجة الموقع
+  locationResult.fold(
+    (failure) {
+      // خطأ في الحصول على الموقع
+      state = AsyncError(failure.message, StackTrace.current);
+    },
+    (position) async {
+      // 3️⃣ استدعاء useCase مع الموقع الداخلي
+      final useCase = ref.read(createPickupRequestUseCaseProvider);
+      final result = await useCase(
+        studentId,
+        lat: position.latitude,
+        lng: position.longitude,
+      );
+
+      // 4️⃣ تحديث الحالة بعد تنفيذ الطلب
+      state = result.fold(
+        (failure) {
+          if (failure is UnauthorizedFailure) {
+            ref.read(authStateProvider.notifier).logout();
+          }
+          return AsyncError(failure.message, StackTrace.current);
+        },
+        (_) => const AsyncData(null),
+      );
+    },
+  );
+}
 }
 
 @riverpod

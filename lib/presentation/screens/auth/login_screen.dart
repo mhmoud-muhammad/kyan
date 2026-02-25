@@ -32,7 +32,7 @@ class LoginScreen extends ConsumerWidget {
           await tokenManager.storage.read(key: StorageKeys.accessToken);
           await tokenManager.storage.read(key: StorageKeys.refreshToken);
 
-if (!context.mounted) return; // ✅ تحقق من mounted قبل استخدام context
+          if (!context.mounted) return; // ✅ تحقق من mounted قبل استخدام context
 
           if (user.role == 'TEACHER') {
             context.go('/teacher');
@@ -215,7 +215,7 @@ class __AnimatedBackgroundState extends State<_AnimatedBackground>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: widget.accentBlue.withAlpha(
-                (0.8* 255 + _controller.value * 0.2).round()
+                (0.8 * 255 + _controller.value * 0.2).round(),
               ),
             ),
           ),
@@ -270,13 +270,13 @@ class __AnimatedLogoState extends State<_AnimatedLogo>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha((0.05* 255).round()),
+                color: Colors.black.withAlpha((0.05 * 255).round()),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Image.asset('assets/images/kyan.png', fit: BoxFit.contain),
+          child: Image.asset('assets/images/kyan3.png', fit: BoxFit.contain),
         ),
       ),
     );
@@ -376,7 +376,9 @@ class __AnimatedTextFieldState extends State<_AnimatedTextField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: widget.primaryColor.withAlpha((0.3 * 255).round()),
+                        color: widget.primaryColor.withAlpha(
+                          (0.3 * 255).round(),
+                        ),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -455,7 +457,7 @@ class __AnimatedTextButtonState extends State<_AnimatedTextButton> {
         child: Text(
           widget.text,
           style: TextStyle(
-            color: widget.primaryColor.withAlpha((0.8* 255).round()),
+            color: widget.primaryColor.withAlpha((0.8 * 255).round()),
             fontWeight: FontWeight.bold,
           ),
         ),

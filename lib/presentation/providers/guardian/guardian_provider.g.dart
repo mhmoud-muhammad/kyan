@@ -157,7 +157,7 @@ final studentsBySchoolProvider =
 // ignore: unused_element
 typedef StudentsBySchoolRef = AutoDisposeFutureProviderRef<List<Student>>;
 String _$pickupRequestForStudentHash() =>
-    r'b67664f00af76d1a89fe76915ebbe55141d67097';
+    r'1bfd61ee0256e0c75cfa893147b8704b58e687c0';
 
 /// Copied from Dart SDK
 class _SystemHash {
