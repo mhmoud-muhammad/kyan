@@ -713,12 +713,12 @@ class ActiveRequestCard extends StatelessWidget {
 }
 
 // =================== القائمة الجانبية ===================
-class _AppDrawer extends StatelessWidget {
+class _AppDrawer extends ConsumerWidget {
   final User? user;
-  const _AppDrawer({this.user});
-
+  const _AppDrawer({this.user, super.key});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
     return Drawer(
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -744,7 +744,7 @@ class _AppDrawer extends StatelessWidget {
           _buildDrawerItem(
             Icons.logout_rounded,
             'تسجيل الخروج',
-            () {},
+            () => showLogoutConfirmation(context, ref),
             isExit: true,
           ),
           const SizedBox(height: 30),
@@ -829,4 +829,75 @@ class _CopyrightFooter extends StatelessWidget {
   }
 }
 
+Future<void> showLogoutConfirmation(BuildContext context, WidgetRef ref) async {
+  final bool? confirm = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
 
+        // ===== العنوان مع أيقونة =====
+        title: Row(
+          children: const [
+            Icon(Icons.logout_rounded, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text(
+              'تسجيل الخروج',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+
+        // ===== المحتوى =====
+        content: const Text(
+          'سيتم إنهاء جلستك الحالية ولن تصلك إشعارات حتى تقوم بتسجيل الدخول مرة أخرى.\n\nهل ترغب بالمتابعة؟',
+          style: TextStyle(height: 1.4),
+        ),
+
+        // ===== الأزرار =====
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('إلغاء'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'تسجيل الخروج',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  // ===== تنفيذ الخروج =====
+  if (confirm == true) {
+    await ref.read(authStateProvider.notifier).logout();
+
+    if (context.mounted) {
+      context.go('/login');
+    }
+  }
+}
