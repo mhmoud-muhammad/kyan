@@ -43,41 +43,39 @@ class PickupRequestForStudent extends _$PickupRequestForStudent {
   AsyncValue<void> build(int studentId) => const AsyncData(null);
 
   Future<void> sendRequest() async {
-  // 1️⃣ تحويل الزر إلى حالة التحميل فورًا
-  state = const AsyncLoading();
+    // 1️⃣ تحويل الزر إلى حالة التحميل فورًا
+    state = const AsyncLoading();
 
-  // 2️⃣ الحصول على الموقع
-  final locationService = ref.read(locationServiceProvider);
-  final locationResult = await locationService.getCurrentLocation();
+    // 2️⃣ الحصول على الموقع
+    final locationService = ref.read(locationServiceProvider);
+    final locationResult = await locationService.getCurrentLocation();
 
-  // التعامل مع نتيجة الموقع
-  locationResult.fold(
-    (failure) {
-      // خطأ في الحصول على الموقع
-      state = AsyncError(failure.message, StackTrace.current);
-    },
-    (position) async {
-      // 3️⃣ استدعاء useCase مع الموقع الداخلي
-      final useCase = ref.read(createPickupRequestUseCaseProvider);
-      final result = await useCase(
-        studentId,
-        lat: position.latitude,
-        lng: position.longitude,
-      );
+    // التعامل مع نتيجة الموقع
+    locationResult.fold(
+      (failure) {
+        // خطأ في الحصول على الموقع
+        state = AsyncError(failure, StackTrace.current);
+      },
+      (position) async {
+        // 3️⃣ استدعاء useCase مع الموقع الداخلي
+        final useCase = ref.read(createPickupRequestUseCaseProvider);
+        // final result = await useCase(studentId, lat: 17.688277, lng: 33.981130);
+        final result = await useCase(
+          studentId,
+          lat: position.latitude,
+          lng: position.longitude,
+        );
 
-      // 4️⃣ تحديث الحالة بعد تنفيذ الطلب
-      state = result.fold(
-        (failure) {
+        // 4️⃣ تحديث الحالة بعد تنفيذ الطلب
+        state = result.fold((failure) {
           if (failure is UnauthorizedFailure) {
             ref.read(authStateProvider.notifier).logout();
           }
           return AsyncError(failure.message, StackTrace.current);
-        },
-        (_) => const AsyncData(null),
-      );
-    },
-  );
-}
+        }, (_) => const AsyncData(null));
+      },
+    );
+  }
 }
 
 @riverpod
@@ -88,7 +86,7 @@ class PickupRequest extends _$PickupRequest {
   Future<void> sendRequest(int studentId) async {
     state = const AsyncLoading();
     final useCase = ref.read(createPickupRequestUseCaseProvider);
-    final result = await useCase(studentId );
+    final result = await useCase(studentId);
 
     state = result.fold(
       (failure) {
@@ -96,7 +94,7 @@ class PickupRequest extends _$PickupRequest {
         if (failure is UnauthorizedFailure) {
           ref.read(authStateProvider.notifier).logout();
         }
-        return AsyncError(failure.message, StackTrace.current);
+        return AsyncError(failure, StackTrace.current);
       },
       (_) {
         //print('✅ Pickup request succeeded');
@@ -150,22 +148,25 @@ Future<List<School>> mySchools(MySchoolsRef ref) {
         debugPrint('❌ mySchools failed: ${failure.message}');
         if (failure is UnauthorizedFailure) {
           ref.read(authStateProvider.notifier).logout();
-          throw failure.message;
+          throw failure;
         } else {
-          throw failure.message;
+          throw failure;
         }
       },
       (schools) {
         // 🐞 طباعة عدد المدارس وأول مدرسة للتحقق
         debugPrint('✅ mySchools loaded: ${schools.length} schools');
         if (schools.isNotEmpty) {
-          debugPrint('🔍 First school: id=${schools.first.id}, name=${schools.first.name}, publicCode=${schools.first.publicCode}, locationMethod=$schools');
+          debugPrint(
+            '🔍 First school: id=${schools.first.id}, name=${schools.first.name}, publicCode=${schools.first.publicCode}, locationMethod=$schools',
+          );
         }
         return schools;
       },
     ),
   );
 }
+
 // Provider لإدارة حالة المدرسة المختارة حاليًا
 @riverpod
 class SelectedSchool extends _$SelectedSchool {
@@ -183,6 +184,21 @@ class SelectedSchool extends _$SelectedSchool {
   }
 }
 
+// @riverpod
+// Future<List<Student>> studentsBySchool(StudentsBySchoolRef ref) {
+//   final selectedSchool = ref.watch(selectedSchoolProvider);
+
+//   if (selectedSchool == null) {
+//     return Future.value([]);
+//   }
+
+//   final usecase = ref.watch(getStudentsBySchoolUseCaseProvider);
+//   return usecase(selectedSchool.id).then(
+//     (result) => result.fold((failure) {
+//       throw failure; // هذا سيؤدي إلى AsyncError في الواجهة
+//     }, (students) => students),
+//   );
+// }
 @riverpod
 Future<List<Student>> studentsBySchool(StudentsBySchoolRef ref) {
   final selectedSchool = ref.watch(selectedSchoolProvider);
@@ -192,11 +208,32 @@ Future<List<Student>> studentsBySchool(StudentsBySchoolRef ref) {
   }
 
   final usecase = ref.watch(getStudentsBySchoolUseCaseProvider);
-  return usecase(selectedSchool.id ).then(
-    (result) => result.fold((failure) {
-      // طباعة تفاصيل الخطأ
-      //print('❌ studentsBySchool failed: ${failure.message}');
-      throw failure.message; // هذا سيؤدي إلى AsyncError في الواجهة
-    }, (students) => students),
+  return usecase(selectedSchool.id).then(
+    (result) => result.fold(
+      (failure) {
+        // 🐞 طباعة تفاصيل الفشل
+        debugPrint('❌ studentsBySchool failed: ${failure.message}');
+        
+        if (failure is UnauthorizedFailure) {
+          // تسجيل خروج المستخدم عند عدم التفويض
+          ref.read(authStateProvider.notifier).logout();
+          throw failure;
+        } else {
+          // رمي الـ Failure نفسه وليس مجرد String
+          throw failure;
+        }
+      },
+      (students) {
+        // 🐞 طباعة عدد الطلاب وأول طالب للتحقق
+        debugPrint('✅ studentsBySchool loaded: ${students.length} students');
+        if (students.isNotEmpty) {
+          final first = students.first;
+          debugPrint(
+            '🔍 First student: id=${first.id}, name=${first.name}, status=${first.status}',
+          );
+        }
+        return students;
+      },
+    ),
   );
 }

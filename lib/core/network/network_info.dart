@@ -21,6 +21,7 @@
         return result != ConnectivityResult.none;
       } catch (e) {
         // إذا فشل الفحص، افترض أن الاتصال غير متاح
+        
         return false;
       }
     }

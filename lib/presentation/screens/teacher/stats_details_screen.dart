@@ -7,18 +7,47 @@ import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/student.dart';
 import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
 
-class StatsDetailsScreen extends ConsumerWidget {
+class StatsDetailsScreen extends ConsumerStatefulWidget {
   const StatsDetailsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final extra = GoRouterState.of(context).extra as Map<String, dynamic>;
-    final type = extra['type'] as String;
-    final title = extra['title'] as String;
-    final color = Color(extra['color'] as int);
+  ConsumerState<StatsDetailsScreen> createState() => _StatsDetailsScreenState();
+}
 
-    // ✅ جلب الطلاب حسب النوع (يتكامل مع DummyData أو API حسب البيئة)
-    final studentsAsync = ref.watch(studentsByStatusProvider(type));
+class _StatsDetailsScreenState extends ConsumerState<StatsDetailsScreen> {
+  late final String type;
+  late final String title;
+  late final Color color;
+
+  @override
+  void initState() {
+    super.initState();
+    // استخراج البيانات من extra بأمان بعد التأكد من أن context لا يزال صالحاً
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final extra = GoRouterState.of(context).extra as Map<String, dynamic>;
+        type = extra['type'] as String;
+        title = extra['title'] as String;
+        final colorValue = extra['color'];
+        color = colorValue is int ? Color(colorValue) : Colors.blue;
+        setState(() {}); // إعادة بناء الشاشة بعد تحميل البيانات
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
+
+    final type = (extra?['type'] as String?) ?? 'total';
+    final title = (extra?['title'] as String?) ?? '';
+    final colorValue = extra?['color'];
+    final color = colorValue is int
+        ? Color(colorValue)
+        : (colorValue as Color? ?? Colors.blue);
+
+    final studentsMap = ref.watch(webSocketStudentsProvider);
+    final students = studentsFromMapByType(studentsMap, type);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +63,7 @@ class StatsDetailsScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Header إحصائي (يبقى كما هو مع إضافة العدد)
+          // الهيدر الإحصائي
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -51,21 +80,14 @@ class StatsDetailsScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(_getIconForType(type), color: Colors.white, size: 40),
-                    // بدلاً من استخدام extra['count']
-                    studentsAsync.when(
-                      data: (students) {
-                        final actualCount = students.length;
-                        return Text(
-                          '$actualCount', // الآن الرقم حقيقي
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        );
-                      },
-                      loading: () => const CircularProgressIndicator(),
-                      error: (_, _) => Text('0'),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${students.length}',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -82,12 +104,10 @@ class StatsDetailsScreen extends ConsumerWidget {
             ),
           ),
 
-          // ✅ قائمة الطلاب (تظهر تحت الهيدر)
+          // قائمة الطلاب
           Expanded(
-            child: studentsAsync.when(
-              data: (students) {
-                if (students.isEmpty) {
-                  return Center(
+            child: students.isEmpty
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -105,46 +125,24 @@ class StatsDetailsScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: students.length,
-                  itemBuilder: (context, index) {
-                    return _buildStudentCard(students[index], color);
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      size: 48,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'خطأ في تحميل الطلاب',
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      err.toString(),
-                      style: AppTextStyles.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      return _buildStudentCard(students[index], color);
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
+
+  bool get _isDataLoaded =>
+      type != null &&
+      title != null &&
+      color != null; // بسيط: نتحقق من أن المتغيرات مُنشأة
 
   // ✅ بطاقة عرض الطالب
   Widget _buildStudentCard(Student student, Color color) {
@@ -164,7 +162,6 @@ class StatsDetailsScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // صورة الطالب (أيقونة)
           Container(
             width: 50,
             height: 50,
@@ -175,8 +172,6 @@ class StatsDetailsScreen extends ConsumerWidget {
             child: Icon(Icons.child_care_rounded, color: color, size: 30),
           ),
           const SizedBox(width: 12),
-
-          // معلومات الطالب
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +203,6 @@ class StatsDetailsScreen extends ConsumerWidget {
                     ],
                   ),
                 ],
-                // عرض حالة الطالب
                 Container(
                   margin: const EdgeInsets.only(top: 4),
                   padding: const EdgeInsets.symmetric(
@@ -216,16 +210,30 @@ class StatsDetailsScreen extends ConsumerWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withAlpha((0.1 * 255).round()),
+                    color: _getStatusColor(
+                      student.status,
+                      color,
+                    ).withAlpha((0.15 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    _getStatusText(student.status),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: color,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getStatusIcon(student.status),
+                        size: 12,
+                        color: _getStatusColor(student.status, color),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _getStatusText(student.status),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _getStatusColor(student.status, color),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -253,6 +261,7 @@ class StatsDetailsScreen extends ConsumerWidget {
         return 'تم التسليم';
       case AttendanceStatus.completed:
         return 'مكتمل';
+      case AttendanceStatus.unknown:
       default:
         return 'غير معروف';
     }
@@ -274,5 +283,50 @@ class StatsDetailsScreen extends ConsumerWidget {
       default:
         return Icons.bar_chart_rounded;
     }
+  }
+}
+
+// الدوال المساعدة خارج الكلاس (أو يمكن وضعها داخل الكلاس)
+Color _getStatusColor(AttendanceStatus status, Color defaultColor) {
+  switch (status) {
+    case AttendanceStatus.present:
+      return Colors.green;
+    case AttendanceStatus.absent:
+      return Colors.red;
+    case AttendanceStatus.late:
+      return Colors.orange;
+    case AttendanceStatus.requested:
+      return Colors.blue;
+    case AttendanceStatus.atGate:
+      return Colors.purple;
+    case AttendanceStatus.delivered:
+      return defaultColor;
+    case AttendanceStatus.completed:
+      return Colors.teal;
+    case AttendanceStatus.unknown:
+    default:
+      return Colors.grey;
+  }
+}
+
+IconData _getStatusIcon(AttendanceStatus status) {
+  switch (status) {
+    case AttendanceStatus.present:
+      return Icons.check_circle;
+    case AttendanceStatus.absent:
+      return Icons.cancel;
+    case AttendanceStatus.late:
+      return Icons.access_time;
+    case AttendanceStatus.requested:
+      return Icons.send;
+    case AttendanceStatus.atGate:
+      return Icons.meeting_room;
+    case AttendanceStatus.delivered:
+      return Icons.local_shipping;
+    case AttendanceStatus.completed:
+      return Icons.verified;
+    case AttendanceStatus.unknown:
+    default:
+      return Icons.help_outline;
   }
 }

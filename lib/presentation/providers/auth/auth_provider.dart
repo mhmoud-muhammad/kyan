@@ -1,6 +1,7 @@
 // lib/presentation/providers/auth_provider.dart
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:myapp/domain/entities/reset_password_usecase.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:dio/dio.dart';
 
@@ -25,6 +26,11 @@ FlutterSecureStorage secureStorage(SecureStorageRef ref) {
   return const FlutterSecureStorage();
 }
 
+
+@riverpod
+ResetPasswordUseCase resetPasswordUseCase(ResetPasswordUseCaseRef ref) {
+  return ResetPasswordUseCase(ref.watch(authRepositoryProvider));
+}
 /// =====================
 /// Network Info
 /// =====================

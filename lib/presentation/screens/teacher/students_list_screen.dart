@@ -19,48 +19,38 @@ class StudentsListScreen extends ConsumerWidget {
     required this.color,
   });
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // الأنواع المدعومة: present, requested, atGate, delivered
-    final studentsAsync = ref.watch(studentsByStatusProvider(type));
+ @override
+Widget build(BuildContext context, WidgetRef ref) {
+  // (اختياري لكنه مفيد) لضمان بقاء listener شغال حتى لو فتحت الشاشة مباشرة
+  //ref.watch(webSocketListenerProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(studentsByStatusProvider(type));
-        },
-        color: AppColors.primary,
-        child: studentsAsync.when(
-          data: (students) {
-            return Column(
-              children: [
-                _buildHeader(context, students.length),
-                Expanded(
-                  child: students.isEmpty
-                      ? _buildEmptyState()
-                      : _buildStudentsList(students),
-                ),
-              ],
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => _buildErrorState(err.toString()),
-        ),
-      ),
-    );
-  }
+  final studentsMap = ref.watch(webSocketStudentsProvider);
+  final students = studentsFromMapByType(studentsMap, type);
 
+  return Scaffold(
+    appBar: AppBar(
+      title: Text(title),
+      backgroundColor: color,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        onPressed: () => context.pop(),
+      ),
+    ),
+    body: Column(
+      children: [
+        _buildHeader(context, students.length),
+        Expanded(
+          child: students.isEmpty
+              ? _buildEmptyState()
+              : _buildStudentsList(students),
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildHeader(BuildContext context, int count) {
     return Container(
       width: double.infinity,

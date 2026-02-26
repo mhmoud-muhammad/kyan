@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:myapp/core/errors/failures.dart';
 import 'package:myapp/core/services/location_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
@@ -335,11 +336,16 @@ class SchoolSelectionView extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => _buildErrorState(
-        message: 'خطأ في تحميل المدارس',
-        details: err.toString(),
-        onRetry: () => ref.refresh(mySchoolsProvider.future),
-      ),
+      error: (err, _) {
+        final failure = err is Failure
+            ? err
+            : ServerFailure('حدث خطأ غير متوقع');
+
+        return _buildErrorState(
+          message: failure.message,
+          onRetry: () => ref.refresh(mySchoolsProvider.future),
+        );
+      },
       loading: () => _buildLoadingShimmer(),
     );
   }
@@ -459,11 +465,15 @@ class StudentListView extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => _buildErrorState(
-        message: 'خطأ في جلب الأبناء',
-        details: err.toString(),
-        onRetry: () => ref.refresh(studentsBySchoolProvider.future),
-      ),
+      error: (err, _) {
+        final failure = err is Failure
+            ? err
+            : ServerFailure('حدث خطأ غير متوقع');
+        return _buildErrorState(
+          message: failure.message,
+          onRetry: () => ref.refresh(studentsBySchoolProvider.future),
+        );
+      },
       loading: () => _buildLoadingShimmer(),
     );
   }
@@ -538,14 +548,14 @@ class StudentAttendanceCard extends ConsumerWidget {
     // الاستماع للنتيجة
     ref.listen(pickupRequestForStudentProvider(student.id), (previous, next) {
       if (next is AsyncError) {
+        final failure = next.error is Failure
+            ? next.error as Failure
+            : ServerFailure('حدث خطأ غير متوقع');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ ${next.error}'),
+            content: Text(failure.message),
             backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
           ),
         );
       } else if (previous is AsyncLoading && next is AsyncData) {
@@ -760,7 +770,6 @@ Widget _buildEmptyState({
 
 Widget _buildErrorState({
   required String message,
-  required String details,
   required VoidCallback onRetry,
 }) {
   return Center(
@@ -775,7 +784,7 @@ Widget _buildErrorState({
               color: AppColors.error.withAlpha((0.1 * 255).round()),
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               Icons.error_outline_rounded,
               size: 64,
               color: AppColors.error,
@@ -783,25 +792,11 @@ Widget _buildErrorState({
           ),
           const SizedBox(height: 24),
           Text(message, style: AppTextStyles.heading2),
-          const SizedBox(height: 8),
-          Text(
-            details,
-            style: AppTextStyles.bodySmall,
-            textAlign: TextAlign.center,
-          ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
+            icon: const Icon(Icons.refresh_rounded),
             label: const Text('إعادة المحاولة'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
           ),
         ],
       ),

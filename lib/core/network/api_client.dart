@@ -1,8 +1,10 @@
 // lib/core/network/api_client.dart
 
 import 'dart:async';
+import 'package:flutter/foundation.dart'; // لإتاحة debugPrint
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:myapp/core/errors/exceptions.dart';
 import '../constants/api_constants.dart';
 
 class ApiClient {
@@ -88,39 +90,58 @@ class ApiClient {
           }
           handler.next(response);
         },
-        onError: (DioException error, handler) async {
-          final res = error.response;
-          final isAuthFreeEndpoint =
-              error.requestOptions.path.contains(ApiConstants.loginEndpoint) ||
-              error.requestOptions.path.contains(
-                ApiConstants.refreshTokenEndpoint,
-              );
+       onError: (DioException error, handler) async {
+  final res = error.response;
+  final path = error.requestOptions.path;
+  final isAuthFreeEndpoint =
+      path.contains(ApiConstants.loginEndpoint) ||
+      path.contains(ApiConstants.refreshTokenEndpoint);
 
-          // إذا كان الخطأ 401 وليس من endpoints المفتوحة
-          if (!isAuthFreeEndpoint && res?.statusCode == 401) {
-            // نحاول refresh
-            final success = await _refreshToken();
+  // 🔹 تحقق من انقطاع الإنترنت
+  if (error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.connectionTimeout) {
+    debugPrint('❌ Network error: ${error.message}');
+    return handler.reject(
+      DioException(
+        requestOptions: error.requestOptions,
+        type: DioExceptionType.unknown,
+        error: NetworkException('لا يوجد اتصال بالإنترنت'),
+      ),
+    );
+  }
 
-            if (success) {
-              // إعادة إرسال الطلب الأصلي بالتوكن الجديد
-              final newToken = await _storage.read(
-                key: ApiConstants.accessTokenKey,
-              );
-              if (newToken != null) {
-                final opts = error.requestOptions;
-                opts.headers['Authorization'] = 'Bearer $newToken';
-                try {
-                  final response = await _dio.fetch(opts);
-                  return handler.resolve(response);
-                } catch (e) {
-                  // إذا فشلت إعادة الإرسال، نمرر الخطأ الأصلي
-                }
-              }
-            }
-          }
+  // 🔹 إذا كان الخطأ 401 وليس من endpoints المفتوحة
+  if (!isAuthFreeEndpoint && res?.statusCode == 401) {
+    final success = await _refreshToken();
+    if (success) {
+      final newToken = await _storage.read(key: ApiConstants.accessTokenKey);
+      if (newToken != null) {
+        final opts = error.requestOptions;
+        opts.headers['Authorization'] = 'Bearer $newToken';
+        try {
+          final response = await _dio.fetch(opts);
+          return handler.resolve(response);
+        } catch (e) {
+          debugPrint('❌ Failed to resend request after refresh: $e');
+        }
+      }
+    }
+    // فشل التجديد → إخطار بالخروج
+    _logoutController.add(null);
+    // return handler.reject(
+    //   DioException(
+    //     requestOptions: error.requestOptions,
+    //     type: DioExceptionType.unauthorized,
+    //     error: UnauthorizedException('انتهت صلاحية الجلسة'),
+    //   ),
+    // );
+    return handler.next(error); // دع Dio يرمي الاستثناء الطبيعي
+  }
 
-          handler.next(error);
-        },
+  // 🔹 أخطاء أخرى
+  debugPrint('❌ Dio error: ${error.message}, status=${res?.statusCode}');
+  handler.next(error);
+},
       ),
     );
   }

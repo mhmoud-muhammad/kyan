@@ -6,13 +6,35 @@ import 'package:myapp/core/constants/api_constants.dart' show ApiConstants;
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/presentation/screens/auth/forgot_password_screen.dart';
 import 'package:myapp/presentation/screens/auth/login_screen.dart';
-import 'package:myapp/presentation/screens/auth/students_list_screen.dart';
+import 'package:myapp/presentation/screens/teacher/students_list_screen.dart';
 import 'package:myapp/presentation/screens/profile/profile_screen.dart';
 import 'package:myapp/presentation/screens/settings/settings_screen.dart';
 import 'package:myapp/presentation/screens/splash/splash_screen.dart';
 import 'package:myapp/presentation/screens/guardian/guardian_home_screen.dart';
 import 'package:myapp/presentation/screens/teacher/stats_details_screen.dart';
 import 'package:myapp/presentation/screens/teacher/teacher_home_screen.dart';
+
+class _StudentListMeta {
+  final String title;
+  final Color color;
+  const _StudentListMeta(this.title, this.color);
+}
+
+_StudentListMeta _metaForType(String type) {
+  switch (type) {
+    case 'present':
+      return _StudentListMeta('حاضر الآن', AppColors.success);
+    case 'requested':
+      return _StudentListMeta('قيد الطلب', const Color(0xFFFF8C42));
+    case 'atGate':
+      return _StudentListMeta('عند البوابة', AppColors.primaryDark);
+    case 'delivered':
+      return _StudentListMeta('تم التسليم', Colors.green);
+    case 'total':
+    default:
+      return _StudentListMeta('إجمالي الطلاب', AppColors.primary);
+  }
+}
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 const _authenticatedRoutes = [
@@ -66,13 +88,14 @@ final appRouter = GoRouter(
       name: 'studentsList',
       pageBuilder: (context, state) {
         final type = state.pathParameters['type'] ?? 'total';
-        final extra = state.extra as Map<String, dynamic>?;
+        final meta = _metaForType(type);
 
         return CustomTransitionPage(
           key: state.pageKey,
           child: StudentsListScreen(
             type: type,
-            title: extra?['title'] ?? 'الطلاب', color: extra?['color'] ?? AppColors.primary,
+            title: meta.title,
+            color: meta.color,
           ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
@@ -123,7 +146,7 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
-          child: StatsDetailsScreen(),
+          child: StatsDetailsScreen(), // هنا الـ extra ستأتي من context
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
               opacity: CurveTween(curve: Curves.easeInOut).animate(animation),

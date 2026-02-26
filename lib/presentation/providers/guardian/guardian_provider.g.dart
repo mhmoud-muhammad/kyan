@@ -121,7 +121,7 @@ final getStudentsBySchoolUseCaseProvider =
 // ignore: unused_element
 typedef GetStudentsBySchoolUseCaseRef =
     AutoDisposeProviderRef<GetStudentsBySchoolUseCase>;
-String _$mySchoolsHash() => r'05f5c3e98d524f7af29891cc50c6c8d326a163bd';
+String _$mySchoolsHash() => r'9a0d223ca91d143aa75b6bda33d3fee769f315cf';
 
 /// See also [mySchools].
 @ProviderFor(mySchools)
@@ -138,7 +138,7 @@ final mySchoolsProvider = AutoDisposeFutureProvider<List<School>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MySchoolsRef = AutoDisposeFutureProviderRef<List<School>>;
-String _$studentsBySchoolHash() => r'ae40b7b1469f21f645a4254e2fadc4f7fb080521';
+String _$studentsBySchoolHash() => r'ac49475d6e35f6e6c097ed7bc7c4c19fdf874b16';
 
 /// See also [studentsBySchool].
 @ProviderFor(studentsBySchool)
@@ -157,7 +157,7 @@ final studentsBySchoolProvider =
 // ignore: unused_element
 typedef StudentsBySchoolRef = AutoDisposeFutureProviderRef<List<Student>>;
 String _$pickupRequestForStudentHash() =>
-    r'1bfd61ee0256e0c75cfa893147b8704b58e687c0';
+    r'6d771c4a0c90de8faba0ea414b446d3d42085424';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -322,7 +322,7 @@ class _PickupRequestForStudentProviderElement
   int get studentId => (origin as PickupRequestForStudentProvider).studentId;
 }
 
-String _$pickupRequestHash() => r'f3fd042cafd5c8e672af0ebad17c3e3e2f8fa000';
+String _$pickupRequestHash() => r'6bcabb27640aaac7a10ac5b4416e497f2f2a7298';
 
 /// See also [PickupRequest].
 @ProviderFor(PickupRequest)

@@ -7,7 +7,7 @@ part of 'teacher_provider.dart';
 // **************************************************************************
 
 String _$teacherRemoteDataSourceHash() =>
-    r'aca0519fccdb7b041bdcdfe67329ebc2d0d37bde';
+    r'03a39e0fcaaef1d2740407cbdf177ef139ed9cc7';
 
 /// See also [teacherRemoteDataSource].
 @ProviderFor(teacherRemoteDataSource)
@@ -222,7 +222,7 @@ class _StudentsByStatusProviderElement
   String get statusType => (origin as StudentsByStatusProvider).statusType;
 }
 
-String _$webSocketListenerHash() => r'f84d1221c8afc014badafa2e91be08ed692097c8';
+String _$webSocketListenerHash() => r'6d2580831975024f8deb8dcd495924e0da77809e';
 
 /// See also [webSocketListener].
 @ProviderFor(webSocketListener)
@@ -260,5 +260,44 @@ final webSocketNotificationsProvider =
 
 typedef _$WebSocketNotifications =
     AutoDisposeNotifier<List<Map<String, dynamic>>>;
+String _$webSocketActiveRequestsHash() =>
+    r'16f0d36792f78c22e95864209a620d056e15220a';
+
+/// See also [WebSocketActiveRequests].
+@ProviderFor(WebSocketActiveRequests)
+final webSocketActiveRequestsProvider =
+    AutoDisposeNotifierProvider<
+      WebSocketActiveRequests,
+      List<ActiveRequest>
+    >.internal(
+      WebSocketActiveRequests.new,
+      name: r'webSocketActiveRequestsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$webSocketActiveRequestsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$WebSocketActiveRequests = AutoDisposeNotifier<List<ActiveRequest>>;
+String _$webSocketStudentsHash() => r'629e700fd1eec17be050a1adfeeb1cd423dce9c4';
+
+/// See also [WebSocketStudents].
+@ProviderFor(WebSocketStudents)
+final webSocketStudentsProvider =
+    AutoDisposeNotifierProvider<
+      WebSocketStudents,
+      Map<String, List<Student>>
+    >.internal(
+      WebSocketStudents.new,
+      name: r'webSocketStudentsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$webSocketStudentsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$WebSocketStudents = AutoDisposeNotifier<Map<String, List<Student>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

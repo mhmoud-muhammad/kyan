@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart'; // تأكد من إضافة Dio في pubspec.yaml
+import 'package:myapp/core/constants/api_constants.dart';
+import 'package:myapp/core/theme/app_colors.dart';
+import 'package:myapp/domain/entities/reset_password_usecase.dart';
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
-import '../../../core/network/api_client.dart'; // يجب أن يكون لديك ApiClient أو Dio محقون
+import 'package:myapp/presentation/providers/auth/reset_password_controller.dart';
+// يجب أن يكون لديك ApiClient أو Dio محقون
 import '../../../core/utils/validators.dart';
 
 // Providers محلية
@@ -13,97 +17,75 @@ final isLoadingProvider = StateProvider<bool>((ref) => false);
 final errorMessageProvider = StateProvider<String?>((ref) => null);
 final successMessageProvider = StateProvider<String?>((ref) => null);
 
-class ForgotPasswordScreen extends ConsumerWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
-  static const Color primaryBlue = Color(0xFF0055A5);
-  static const Color accentBlue = Color(0xFFE3F2FD);
+  @override
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
+  final phoneController = TextEditingController();
+  final nationalIdController = TextEditingController();
+  final newPasswordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final phoneController = TextEditingController();
-    final nationalIdController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
+  void dispose() {
+    phoneController.dispose();
+    nationalIdController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
-    final isLoading = ref.watch(isLoadingProvider);
-    final errorMessage = ref.watch(errorMessageProvider);
-    final successMessage = ref.watch(successMessageProvider);
+  Future<void> handleResetPassword() async {
+    if (!formKey.currentState!.validate()) return;
 
-    // دالة إعادة تعيين كلمة المرور
-    Future<void> _handleResetPassword() async {
-      // التحقق من صحة الحقول
-      if (!formKey.currentState!.validate()) return;
-
-      // التحقق من تطابق كلمتي السر
-      if (newPasswordController.text != confirmPasswordController.text) {
-        ref.read(errorMessageProvider.notifier).state = 'كلمتا السر غير متطابقتين';
-        return;
-      }
-
-      ref.read(isLoadingProvider.notifier).state = true;
-      ref.read(errorMessageProvider.notifier).state = null;
-      ref.read(successMessageProvider.notifier).state = null;
-
-      try {
-        // استخدام ApiClient أو Dio مباشرة
-        final dio = ref.read(apiClientProvider); // تأكد من وجود provider لـ Dio
-        final response = await dio.post(
-          '/api/v1/auth/reset-password/',
-          data: {
-            'phone': phoneController.text.trim(),
-            'national_id': nationalIdController.text.trim(),
-            'new_password': newPasswordController.text,
-            'confirm_password': confirmPasswordController.text,
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final message = response.data['detail'] ?? 'تم تغيير كلمة السر بنجاح';
-          ref.read(successMessageProvider.notifier).state = message;
-
-          // الانتقال إلى صفحة تسجيل الدخول بعد 2 ثانية
-          Timer(const Duration(seconds: 2), () {
-            if (context.mounted) {
-              context.go('/login');
-            }
-          });
-        }
-      } on DioException catch (e) {
-        // معالجة أخطاء API
-        if (e.response?.statusCode == 400) {
-          // errors من النوع { "field": ["message"] }
-          final errors = e.response?.data;
-          if (errors is Map) {
-            // استخراج أول رسالة خطأ
-            String firstError = '';
-            errors.forEach((key, value) {
-              if (value is List && value.isNotEmpty) {
-                firstError = value.first;
-              } else if (value is String) {
-                firstError = value;
-              }
-            });
-            ref.read(errorMessageProvider.notifier).state = firstError.isNotEmpty ? firstError : 'بيانات غير صحيحة';
-          } else {
-            ref.read(errorMessageProvider.notifier).state = 'بيانات غير صحيحة';
-          }
-        } else {
-          ref.read(errorMessageProvider.notifier).state = 'حدث خطأ في الاتصال';
-        }
-      } catch (e) {
-        ref.read(errorMessageProvider.notifier).state = 'حدث خطأ غير متوقع';
-      } finally {
-        ref.read(isLoadingProvider.notifier).state = false;
-      }
+    if (newPasswordController.text != confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('كلمتا السر غير متطابقتين')),
+      );
+      return;
     }
+
+    await ref.read(resetPasswordControllerProvider.notifier).resetPassword(
+          ResetPasswordParams(
+            phone: phoneController.text.trim(),
+            nationalId: nationalIdController.text.trim(),
+            newPassword: newPasswordController.text,
+            confirmPassword: confirmPasswordController.text,
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resetState = ref.watch(resetPasswordControllerProvider);
+
+    // ✅ عند نجاح العملية رجّع المستخدم لصفحة login بعد ثانيتين
+    ref.listen(resetPasswordControllerProvider, (prev, next) {
+      next.whenOrNull(
+        data: (msg) {
+          if (msg == null) return;
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) context.go('/login');
+          });
+        },
+      );
+    });
+
+    final isLoading = resetState.isLoading;
+    final error = resetState.hasError ? resetState.error.toString() : null;
+    final success = resetState.asData?.value;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          _ForgotBackground(accentBlue: accentBlue),
+          _ForgotBackground(accentBlue: AppColors.primaryLight),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -111,14 +93,14 @@ class ForgotPasswordScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _ForgotLogo(),
+                    const _ForgotLogo(),
                     const SizedBox(height: 30),
-                    _ForgotText(
+                    const _ForgotText(
                       'إعادة تعيين كلمة المرور',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: primaryBlue,
+                        color: AppColors.primaryDark,
                         letterSpacing: 1,
                       ),
                     ),
@@ -142,7 +124,7 @@ class ForgotPasswordScreen extends ConsumerWidget {
                             icon: Icons.phone_android_rounded,
                             keyboardType: TextInputType.phone,
                             validator: Validators.phone,
-                            primaryColor: primaryBlue,
+                            primaryColor: AppColors.primaryDark,
                           ),
                           const SizedBox(height: 20),
                           _ForgotTextField(
@@ -154,19 +136,19 @@ class ForgotPasswordScreen extends ConsumerWidget {
                               if (value == null || value.isEmpty) {
                                 return 'رقم الهوية مطلوب';
                               }
-                              if (value.length < 10) {
+                              if (value.length < 6) {
                                 return 'رقم الهوية يجب أن يكون 10 أرقام على الأقل';
                               }
                               return null;
                             },
-                            primaryColor: primaryBlue,
+                            primaryColor: AppColors.primaryDark,
                           ),
                           const SizedBox(height: 20),
                           _ForgotPasswordField(
                             controller: newPasswordController,
                             label: 'كلمة المرور الجديدة',
                             validator: Validators.password,
-                            primaryColor: primaryBlue,
+                            primaryColor: AppColors.primaryDark,
                           ),
                           const SizedBox(height: 20),
                           _ForgotPasswordField(
@@ -178,21 +160,27 @@ class ForgotPasswordScreen extends ConsumerWidget {
                               }
                               return null;
                             },
-                            primaryColor: primaryBlue,
+                            primaryColor: AppColors.primaryDark,
                           ),
                           const SizedBox(height: 30),
+
+                          // ✅ الزر الآن يعمل ويستدعي handleResetPassword
                           _ForgotSubmitButton(
                             isLoading: isLoading,
-                            onPressed: isLoading ? null : _handleResetPassword,
-                            primaryColor: primaryBlue,
+                            onPressed:
+                                isLoading ? null : () => handleResetPassword(),
+                            primaryColor: AppColors.primaryDark,
                           ),
+
                           const SizedBox(height: 20),
                           TextButton(
                             onPressed: () => context.pop(),
                             child: Text(
                               'العودة إلى تسجيل الدخول',
                               style: TextStyle(
-                                color: primaryBlue.withAlpha((0.8 * 255).round()),
+                                color: AppColors.primaryDark.withAlpha(
+                                  (0.8 * 255).round(),
+                                ),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -201,21 +189,21 @@ class ForgotPasswordScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    _ForgotFooter(primaryColor: primaryBlue),
+                    const _ForgotFooter(primaryColor: AppColors.primaryDark),
                   ],
                 ),
               ),
             ),
           ),
+
           if (isLoading) const _ForgotLoadingOverlay(),
-          if (errorMessage != null) _ForgotErrorOverlay(message: errorMessage),
-          if (successMessage != null) _ForgotSuccessOverlay(message: successMessage),
+          if (error != null) _ForgotErrorOverlay(message: error),
+          if (success != null) _ForgotSuccessOverlay(message: success),
         ],
       ),
     );
   }
 }
-
 // ==================== مكونات مساعدة ====================
 
 class _ForgotBackground extends StatefulWidget {
@@ -414,7 +402,9 @@ class __ForgotTextFieldState extends State<_ForgotTextField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: widget.primaryColor.withAlpha((0.3 * 255).round()),
+                        color: widget.primaryColor.withAlpha(
+                          (0.3 * 255).round(),
+                        ),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -511,7 +501,9 @@ class __ForgotPasswordFieldState extends State<_ForgotPasswordField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: widget.primaryColor.withAlpha((0.3 * 255).round()),
+                        color: widget.primaryColor.withAlpha(
+                          (0.3 * 255).round(),
+                        ),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -525,7 +517,10 @@ class __ForgotPasswordFieldState extends State<_ForgotPasswordField> {
               validator: widget.validator,
               decoration: InputDecoration(
                 labelText: widget.label,
-                prefixIcon: Icon(Icons.lock_outline_rounded, color: widget.primaryColor),
+                prefixIcon: Icon(
+                  Icons.lock_outline_rounded,
+                  color: widget.primaryColor,
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureText ? Icons.visibility_off : Icons.visibility,

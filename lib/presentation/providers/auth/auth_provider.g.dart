@@ -28,6 +28,25 @@ final secureStorageProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SecureStorageRef = AutoDisposeProviderRef<FlutterSecureStorage>;
+String _$resetPasswordUseCaseHash() =>
+    r'06928f6ac6d445eced9ce0e7a707460b3ae234b6';
+
+/// See also [resetPasswordUseCase].
+@ProviderFor(resetPasswordUseCase)
+final resetPasswordUseCaseProvider =
+    AutoDisposeProvider<ResetPasswordUseCase>.internal(
+      resetPasswordUseCase,
+      name: r'resetPasswordUseCaseProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$resetPasswordUseCaseHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ResetPasswordUseCaseRef = AutoDisposeProviderRef<ResetPasswordUseCase>;
 String _$networkInfoHash() => r'2bf44e6bdb28d5de63bc0a507b333a33e83758e9';
 
 /// =====================

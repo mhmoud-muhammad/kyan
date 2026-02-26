@@ -2,8 +2,10 @@
 
 import 'package:dartz/dartz.dart';
 import 'package:myapp/core/errors/exception_mapper.dart';
+import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/network/token_manager.dart';
 import 'package:myapp/domain/entities/auth_response.dart';
+import 'package:myapp/domain/entities/reset_password_usecase.dart';
 import 'package:myapp/domain/entities/user.dart';
 import 'package:myapp/domain/repositories/auth_repository.dart';
 import '../../core/errors/failures.dart';
@@ -22,6 +24,22 @@ class AuthRepositoryImpl implements AuthRepository {
     required this.networkInfo,
     required TokenManager tokenManager,
   });
+
+
+ @override
+  Future<Either<Failure, String>> resetPassword(ResetPasswordParams params) async {
+    if (!await networkInfo.isConnected) return Left(NetworkFailure());
+    try {
+      final msg = await remoteDataSource.resetPassword(params);
+      return Right(msg);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (_) {
+      return Left(ServerFailure('حدث خطأ غير متوقع'));
+    }
+  }
+
+  
 
   /// 🔹 تسجيل الدخول
   @override
