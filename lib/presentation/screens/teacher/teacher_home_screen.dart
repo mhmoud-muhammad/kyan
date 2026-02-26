@@ -47,21 +47,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
     }
   }
 
-  void _handleWebSocketMessage(Map<String, dynamic> message) {
-    // تحديد نوع الرسالة (يفترض وجود حقل type)
-    final type = message['type'] as String?;
-
-    if (type == 'notification') {
-      // إضافة الإشعار إلى قائمة الإشعارات
-      ref
-          .read(webSocketNotificationsProvider.notifier)
-          .addNotification(message);
-    } else if (type == 'new_request' || type == 'request_updated') {
-      // تحديث قائمة الطلبات النشطة والإحصائيات
-      _refreshData(ref);
-    }
-    // يمكن إضافة المزيد من الأنواع حسب الحاجة
-  }
 
   Future<void> _refreshData(WidgetRef ref) async {
     ref.invalidate(dashboardStatsProvider);

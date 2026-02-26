@@ -206,27 +206,11 @@
     }
 
     // 🔹 أضف هذا المتغير داخل TeacherRemoteDataSourceImpl لتخزين بيانات WebSocket
-    Map<String, List<Student>>? _studentsMap;
 
     // 🔹 وأضف Setter لتحديثه من WebSocket
     void updateStudentsFromWebSocket(Map<String, List<Student>> map) {
-      _studentsMap = map;
     }
       // دالة مساعدة للتحويل
-      String _mapStatusTypeToApi(String type) {
-        switch (type) {
-          case 'present':
-            return 'PRESENT';
-          case 'requested':
-            return 'REQUESTED';
-          case 'atGate':
-            return 'AT_GATE';
-          case 'delivered':
-            return 'DELIVERED';
-          default:
-            return '';
-        }
-      }
 
       // دالة مساعدة لتحويل type إلى status
     }

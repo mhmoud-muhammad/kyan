@@ -238,39 +238,6 @@ Widget build(BuildContext context, WidgetRef ref) {
     );
   }
 
-  Widget _buildErrorState(String error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline_rounded,
-            size: 48,
-            color: AppColors.error,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'خطأ في تحميل الطلاب',
-            style: TextStyle(color: AppColors.error),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            error,
-            style: AppTextStyles.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              // إعادة المحاولة عن طريق إبطال الـ provider
-             // ref.invalidate(studentsByStatusProvider(type));
-            },
-            child: const Text('إعادة المحاولة'),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _getStatusText(AttendanceStatus status) {
     switch (status) {

@@ -3,11 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dio/dio.dart'; // تأكد من إضافة Dio في pubspec.yaml
-import 'package:myapp/core/constants/api_constants.dart';
+import 'package:myapp/core/router/go_router_provider.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/domain/entities/reset_password_usecase.dart';
-import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 import 'package:myapp/presentation/providers/auth/reset_password_controller.dart';
 // يجب أن يكون لديك ApiClient أو Dio محقون
 import '../../../core/utils/validators.dart';
@@ -45,13 +43,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!formKey.currentState!.validate()) return;
 
     if (newPasswordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('كلمتا السر غير متطابقتين')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('كلمتا السر غير متطابقتين')));
       return;
     }
 
-    await ref.read(resetPasswordControllerProvider.notifier).resetPassword(
+    await ref
+        .read(resetPasswordControllerProvider.notifier)
+        .resetPassword(
           ResetPasswordParams(
             phone: phoneController.text.trim(),
             nationalId: nationalIdController.text.trim(),
@@ -71,7 +71,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         data: (msg) {
           if (msg == null) return;
           Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) context.go('/login');
+            final goRouter = ref.read(goRouterProvider);
+            goRouter.go('/login'); // آمن الآن بدون context
           });
         },
       );
@@ -167,8 +168,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           // ✅ الزر الآن يعمل ويستدعي handleResetPassword
                           _ForgotSubmitButton(
                             isLoading: isLoading,
-                            onPressed:
-                                isLoading ? null : () => handleResetPassword(),
+                            onPressed: isLoading
+                                ? null
+                                : () => handleResetPassword(),
                             primaryColor: AppColors.primaryDark,
                           ),
 

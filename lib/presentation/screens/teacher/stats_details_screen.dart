@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/student.dart';
 import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
@@ -139,10 +138,7 @@ class _StatsDetailsScreenState extends ConsumerState<StatsDetailsScreen> {
     );
   }
 
-  bool get _isDataLoaded =>
-      type != null &&
-      title != null &&
-      color != null; // بسيط: نتحقق من أن المتغيرات مُنشأة
+// بسيط: نتحقق من أن المتغيرات مُنشأة
 
   // ✅ بطاقة عرض الطالب
   Widget _buildStudentCard(Student student, Color color) {
