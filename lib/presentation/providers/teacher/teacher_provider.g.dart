@@ -6,6 +6,26 @@ part of 'teacher_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$unifiedActiveRequestsHash() =>
+    r'56d0c2cd4af805f28688c9cfd4dad072ced32b9a';
+
+/// See also [unifiedActiveRequests].
+@ProviderFor(unifiedActiveRequests)
+final unifiedActiveRequestsProvider =
+    AutoDisposeProvider<AsyncValue<List<ActiveRequest>>>.internal(
+      unifiedActiveRequests,
+      name: r'unifiedActiveRequestsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$unifiedActiveRequestsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef UnifiedActiveRequestsRef =
+    AutoDisposeProviderRef<AsyncValue<List<ActiveRequest>>>;
 String _$teacherRemoteDataSourceHash() =>
     r'03a39e0fcaaef1d2740407cbdf177ef139ed9cc7';
 
@@ -62,6 +82,24 @@ final dashboardStatsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef DashboardStatsRef = AutoDisposeFutureProviderRef<TeacherDashboardStats>;
+String _$wsDashboardStatsHash() => r'f39d242e85a2ff79a2bb297a5b536abd333db07d';
+
+/// See also [wsDashboardStats].
+@ProviderFor(wsDashboardStats)
+final wsDashboardStatsProvider =
+    AutoDisposeProvider<TeacherDashboardStats>.internal(
+      wsDashboardStats,
+      name: r'wsDashboardStatsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$wsDashboardStatsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef WsDashboardStatsRef = AutoDisposeProviderRef<TeacherDashboardStats>;
 String _$activeRequestsHash() => r'4224accba768148ec3cbaca3909ddfd3c43aeabe';
 
 /// See also [activeRequests].
@@ -222,7 +260,7 @@ class _StudentsByStatusProviderElement
   String get statusType => (origin as StudentsByStatusProvider).statusType;
 }
 
-String _$webSocketListenerHash() => r'6d2580831975024f8deb8dcd495924e0da77809e';
+String _$webSocketListenerHash() => r'57bddd0dc0204a0c36646c90507f4cff2aa45ae3';
 
 /// See also [webSocketListener].
 @ProviderFor(webSocketListener)
@@ -261,7 +299,7 @@ final webSocketNotificationsProvider =
 typedef _$WebSocketNotifications =
     AutoDisposeNotifier<List<Map<String, dynamic>>>;
 String _$webSocketActiveRequestsHash() =>
-    r'16f0d36792f78c22e95864209a620d056e15220a';
+    r'88423cb0dd6ae9286a6e71f73b37dc5da8b70f44';
 
 /// See also [WebSocketActiveRequests].
 @ProviderFor(WebSocketActiveRequests)
@@ -280,7 +318,7 @@ final webSocketActiveRequestsProvider =
     );
 
 typedef _$WebSocketActiveRequests = AutoDisposeNotifier<List<ActiveRequest>>;
-String _$webSocketStudentsHash() => r'629e700fd1eec17be050a1adfeeb1cd423dce9c4';
+String _$webSocketStudentsHash() => r'7b7eb2e6efd40dc02c75409459afb883d2a45892';
 
 /// See also [WebSocketStudents].
 @ProviderFor(WebSocketStudents)

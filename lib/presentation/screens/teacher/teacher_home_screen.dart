@@ -8,6 +8,7 @@ import 'package:myapp/core/services/websocket_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/active_request.dart';
+import 'package:myapp/domain/entities/student.dart';
 import 'package:myapp/domain/entities/user.dart';
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
@@ -47,7 +48,6 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
     }
   }
 
-
   Future<void> _refreshData(WidgetRef ref) async {
     ref.invalidate(dashboardStatsProvider);
     ref.invalidate(activeRequestsProvider);
@@ -62,8 +62,7 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(webSocketListenerProvider); // ✅ يخلي الـ listener شغال
-      ref.watch(webSocketStudentsProvider);      // ✅ أضف هذا السطر (يحافظ على state)
-
+    ref.watch(webSocketStudentsProvider); // ✅ أضف هذا السطر (يحافظ على state)
 
     final user = ref.watch(authStateProvider).value;
 
@@ -435,7 +434,7 @@ class ActiveRequestsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final requestsAsync = ref.watch(activeRequestsProvider);
+    final requestsAsync = ref.watch(unifiedActiveRequestsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -652,6 +651,23 @@ class ActiveRequestCard extends ConsumerWidget {
                               ),
                             );
                             // ✅ استخدام ref مباشرة بدون addPostFrameCallback
+                            // 1) احذف الطلب من قائمة الطلبات النشطة (مضمون بالـ studentId)
+                            ref
+                                .read(webSocketActiveRequestsProvider.notifier)
+                                .removeByStudentId(request.studentId);
+
+                            // 2) حدّث حالة الطالب في مخزن الطلاب
+                            ref
+                                .read(webSocketStudentsProvider.notifier)
+                                .updateStudentStatusLocal(
+                                  request.studentId,
+                                  AttendanceStatus.delivered,
+                                );
+
+                            // 3) حدث الإحصائيات (إذا stats من REST)
+                            ref.invalidate(dashboardStatsProvider);
+
+                            // 4) fallback: لو WS غير متزامن/أو REST هو المصدر
                             ref.invalidate(activeRequestsProvider);
                           },
                         );
@@ -838,7 +854,6 @@ class _CopyrightFooter extends StatelessWidget {
   const _CopyrightFooter();
   @override
   Widget build(BuildContext context) {
-    
     return Center(
       child: Text(
         'حقوق النشر © 2026 - نظام الكيان التعليمي',

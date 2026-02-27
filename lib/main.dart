@@ -15,6 +15,7 @@ final flutterLocalNotificationsPluginProvider =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
 
   // إعدادات الإشعارات
   const AndroidInitializationSettings initializationSettingsAndroid =
@@ -33,6 +34,12 @@ void main() async {
     // يمكنك إضافة معالج للنقر على الإشعارات هنا إذا أردت
     // onDidReceiveNotificationResponse: (NotificationResponse response) {},
   );
+  if (defaultTargetPlatform == TargetPlatform.android) {
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.requestNotificationsPermission();
+}
 
   // طلب أذونات iOS إذا لزم الأمر
   if (defaultTargetPlatform == TargetPlatform.iOS) {

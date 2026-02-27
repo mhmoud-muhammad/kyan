@@ -32,8 +32,11 @@ class WebSocketService {
     debugPrint('🟢 [WS] Token loaded successfully');
 
     // تحويل https → ws
-    final wsBase = ApiConstants.domain
-        .replaceFirst(RegExp(r'^https?:\/\/'), 'ws://');
+    final domain = ApiConstants.domain.trim();
+    final wsBase = domain.replaceFirst(
+      RegExp(r'^https?:\/\/'),
+      domain.startsWith('https://') ? 'wss://' : 'ws://',
+    );
 
     final url = '$wsBase/ws/pickup/teacher/';
     final uri = Uri.parse('$url?token=$token');
