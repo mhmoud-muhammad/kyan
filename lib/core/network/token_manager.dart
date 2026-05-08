@@ -86,16 +86,36 @@ class TokenManager {
     }
 
     try {
-      // هنا يجب أن نستخدم Dio منفصل بدون اعتراضيات لتجنب الحلقات اللانهائية
       final response = await Dio().post(
-        '${ApiConstants.baseUrl}${ApiConstants.refreshTokenEndpoint}',
+        ApiConstants.refUrl, // ✅ نفس اللي شغال عند ApiClient
         data: {'refresh': refreshToken},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (s) => true,
+        ),
       );
-      final newAccess = response.data['access'];
-      await saveTokens(newAccess, refreshToken); // يحفظ access ويحدث issuedAt
+
+      if (response.statusCode != 200) {
+        await clearTokens();
+        _logoutController.add(null);
+        return null;
+      }
+
+      final newAccess = response.data['access']?.toString();
+      final newRefresh = response.data['refresh']?.toString() ?? refreshToken;
+
+      if (newAccess == null || newAccess.isEmpty) {
+        await clearTokens();
+        _logoutController.add(null);
+        return null;
+      }
+
+      await saveTokens(newAccess, newRefresh); // تحدث issuedAt
       return newAccess;
-    } catch (e) {
-      // إذا فشل التحديث (مثلاً الـ refresh token منتهي)، نمسح كل شيء ونطلب تسجيل الخروج
+    } catch (_) {
       await clearTokens();
       _logoutController.add(null);
       return null;

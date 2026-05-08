@@ -19,38 +19,45 @@ class StudentsListScreen extends ConsumerWidget {
     required this.color,
   });
 
- @override
-Widget build(BuildContext context, WidgetRef ref) {
-  // (اختياري لكنه مفيد) لضمان بقاء listener شغال حتى لو فتحت الشاشة مباشرة
-  //ref.watch(webSocketListenerProvider);
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // (اختياري لكنه مفيد) لضمان بقاء listener شغال حتى لو فتحت الشاشة مباشرة
+    ref.watch(webSocketListenerProvider);
+    Future.microtask(
+      () => ref.read(websocketConnectionProvider).connectTeacher(),
+    );
 
-  final studentsMap = ref.watch(webSocketStudentsProvider);
-  final students = studentsFromMapByType(studentsMap, type);
+    final studentsMap = ref.watch(webSocketStudentsProvider);
+    final students = studentsFromMapByType(studentsMap, type);
+    final waitingInitialSync = studentsMap.isEmpty; // أهم سطر
 
-  return Scaffold(
-    appBar: AppBar(
-      title: Text(title),
-      backgroundColor: color,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        onPressed: () => context.pop(),
-      ),
-    ),
-    body: Column(
-      children: [
-        _buildHeader(context, students.length),
-        Expanded(
-          child: students.isEmpty
-              ? _buildEmptyState()
-              : _buildStudentsList(students),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => context.pop(),
         ),
-      ],
-    ),
-  );
-}
+      ),
+      body: waitingInitialSync
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildHeader(context, students.length),
+                Expanded(
+                  child: students.isEmpty
+                      ? _buildEmptyState()
+                      : _buildStudentsList(students),
+                ),
+              ],
+            ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, int count) {
     return Container(
       width: double.infinity,
@@ -148,11 +155,7 @@ Widget build(BuildContext context, WidgetRef ref) {
               color: statusColor.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              Icons.child_care_rounded,
-              color: statusColor,
-              size: 30,
-            ),
+            child: Icon(Icons.child_care_rounded, color: statusColor, size: 30),
           ),
           const SizedBox(width: 12),
 
@@ -221,23 +224,16 @@ Widget build(BuildContext context, WidgetRef ref) {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.inbox_rounded,
-            size: 60,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.inbox_rounded, size: 60, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             'لا يوجد طلاب في هذه الفئة',
-            style: AppTextStyles.body.copyWith(
-              color: Colors.grey.shade600,
-            ),
+            style: AppTextStyles.body.copyWith(color: Colors.grey.shade600),
           ),
         ],
       ),
     );
   }
-
 
   String _getStatusText(AttendanceStatus status) {
     switch (status) {

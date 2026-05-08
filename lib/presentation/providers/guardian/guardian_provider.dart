@@ -1,6 +1,8 @@
 // lib/presentation/providers/guardian_provider.dart
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myapp/core/errors/failures.dart';
+import 'package:myapp/core/network/connectivity_provider.dart';
 import 'package:myapp/core/services/location_service.dart';
 import 'package:myapp/domain/usecases/create_pickup_request_usecase.dart';
 import 'package:myapp/domain/usecases/get_my_students_usecase.dart';
@@ -15,6 +17,8 @@ import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 
 part 'guardian_provider.g.dart';
 
+// lib/presentation/providers/guardian/guardian_provider.dart
+final locationWarmupDoneProvider = StateProvider<bool>((ref) => false);
 @riverpod
 GuardianRemoteDataSource guardianRemoteDataSource(
   GuardianRemoteDataSourceRef ref,
@@ -48,8 +52,10 @@ class PickupRequestForStudent extends _$PickupRequestForStudent {
 
     // 2️⃣ الحصول على الموقع
     final locationService = ref.read(locationServiceProvider);
-    final locationResult = await locationService.getCurrentLocation();
-
+    final locationResult = await locationService.getHighAccuracyFresh(
+      maxAge: const Duration(seconds: 25),
+      timeLimit: const Duration(seconds: 10),
+    );
     // التعامل مع نتيجة الموقع
     locationResult.fold(
       (failure) {
@@ -59,7 +65,7 @@ class PickupRequestForStudent extends _$PickupRequestForStudent {
       (position) async {
         // 3️⃣ استدعاء useCase مع الموقع الداخلي
         final useCase = ref.read(createPickupRequestUseCaseProvider);
-        // final result = await useCase(studentId, lat: 17.688277, lng: 33.981130);
+        //final result = await useCase(studentId, lat: 17.688277, lng: 33.981130);
         final result = await useCase(
           studentId,
           lat: position.latitude,
@@ -68,9 +74,7 @@ class PickupRequestForStudent extends _$PickupRequestForStudent {
 
         // 4️⃣ تحديث الحالة بعد تنفيذ الطلب
         state = result.fold((failure) {
-          if (failure is UnauthorizedFailure) {
-            ref.read(authStateProvider.notifier).logout();
-          }
+          
           return AsyncError(failure.message, StackTrace.current);
         }, (_) => const AsyncData(null));
       },
@@ -91,9 +95,7 @@ class PickupRequest extends _$PickupRequest {
     state = result.fold(
       (failure) {
         //print('❌ Pickup request failed: ${failure.message}');
-        if (failure is UnauthorizedFailure) {
-          ref.read(authStateProvider.notifier).logout();
-        }
+       
         return AsyncError(failure, StackTrace.current);
       },
       (_) {
@@ -146,12 +148,8 @@ Future<List<School>> mySchools(MySchoolsRef ref) {
       (failure) {
         // 🐞 طباعة تفاصيل الفشل
         debugPrint('❌ mySchools failed: ${failure.message}');
-        if (failure is UnauthorizedFailure) {
-          ref.read(authStateProvider.notifier).logout();
-          throw failure;
-        } else {
-          throw failure;
-        }
+        
+        throw failure;
       },
       (schools) {
         // 🐞 طباعة عدد المدارس وأول مدرسة للتحقق
@@ -202,38 +200,19 @@ class SelectedSchool extends _$SelectedSchool {
 @riverpod
 Future<List<Student>> studentsBySchool(StudentsBySchoolRef ref) {
   final selectedSchool = ref.watch(selectedSchoolProvider);
-
+  final online = ref.watch(isOnlineProvider);
+  if (!online) {
+    throw NetworkFailure('لا يوجد اتصال بالإنترنت');
+  }
   if (selectedSchool == null) {
     return Future.value([]);
   }
 
   final usecase = ref.watch(getStudentsBySchoolUseCaseProvider);
   return usecase(selectedSchool.id).then(
-    (result) => result.fold(
-      (failure) {
-        // 🐞 طباعة تفاصيل الفشل
-        debugPrint('❌ studentsBySchool failed: ${failure.message}');
-        
-        if (failure is UnauthorizedFailure) {
-          // تسجيل خروج المستخدم عند عدم التفويض
-          ref.read(authStateProvider.notifier).logout();
-          throw failure;
-        } else {
-          // رمي الـ Failure نفسه وليس مجرد String
-          throw failure;
-        }
-      },
-      (students) {
-        // 🐞 طباعة عدد الطلاب وأول طالب للتحقق
-        debugPrint('✅ studentsBySchool loaded: ${students.length} students');
-        if (students.isNotEmpty) {
-          final first = students.first;
-          debugPrint(
-            '🔍 First student: id=${first.id}, name=${first.name}, status=${first.status}',
-          );
-        }
-        return students;
-      },
-    ),
+    (result) => result.fold((failure) {
+      
+      throw failure; // يرمي Failure نفسه (UI يفهمه)
+    }, (students) => students),
   );
 }

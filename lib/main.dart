@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/kyan.dart';
+// إذا عندك apiClientProvider هنا (مثال)
+import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 
 // Provider للوصول إلى مثيل الإشعارات في أي مكان
 final flutterLocalNotificationsPluginProvider =
@@ -15,7 +17,6 @@ final flutterLocalNotificationsPluginProvider =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
 
   // إعدادات الإشعارات
   const AndroidInitializationSettings initializationSettingsAndroid =
@@ -35,11 +36,12 @@ void main() async {
     // onDidReceiveNotificationResponse: (NotificationResponse response) {},
   );
   if (defaultTargetPlatform == TargetPlatform.android) {
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.requestNotificationsPermission();
-}
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+  }
 
   // طلب أذونات iOS إذا لزم الأمر
   if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -58,6 +60,10 @@ void main() async {
       ),
     ],
   );
+  // بعد إنشاء container مباشرة:
+  container.read(apiClientProvider);
+
+  // اشترك مرة واحدة
 
   runApp(
     UncontrolledProviderScope(container: container, child: const KyanApp()),
@@ -86,7 +92,7 @@ class KyanApp extends StatelessWidget {
 
       // Theme
       theme: AppTheme.lightTheme,
-      darkTheme: null, 
+      darkTheme: null,
       themeMode: ThemeMode.light,
 
       // Router

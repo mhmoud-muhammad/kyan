@@ -6,8 +6,28 @@ part of 'teacher_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$wsDerivedActiveRequestsHash() =>
+    r'71248244630695437fc025cc3012ada1bae9366a';
+
+/// See also [wsDerivedActiveRequests].
+@ProviderFor(wsDerivedActiveRequests)
+final wsDerivedActiveRequestsProvider =
+    AutoDisposeProvider<List<ActiveRequest>>.internal(
+      wsDerivedActiveRequests,
+      name: r'wsDerivedActiveRequestsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$wsDerivedActiveRequestsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef WsDerivedActiveRequestsRef =
+    AutoDisposeProviderRef<List<ActiveRequest>>;
 String _$unifiedActiveRequestsHash() =>
-    r'56d0c2cd4af805f28688c9cfd4dad072ced32b9a';
+    r'3162f6a2126f502a07fc80fa80e164d2e11dddb8';
 
 /// See also [unifiedActiveRequests].
 @ProviderFor(unifiedActiveRequests)
@@ -64,7 +84,7 @@ final teacherRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef TeacherRepositoryRef = AutoDisposeProviderRef<TeacherRepository>;
-String _$dashboardStatsHash() => r'1cfded847f599d571b9f046985a3867ba37e8f76';
+String _$dashboardStatsHash() => r'46845d880f90868b06d55978e2c15fc907494823';
 
 /// See also [dashboardStats].
 @ProviderFor(dashboardStats)
@@ -100,7 +120,7 @@ final wsDashboardStatsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef WsDashboardStatsRef = AutoDisposeProviderRef<TeacherDashboardStats>;
-String _$activeRequestsHash() => r'4224accba768148ec3cbaca3909ddfd3c43aeabe';
+String _$activeRequestsHash() => r'ab560613fa030c660944ec65ded30d271adeb1ac';
 
 /// See also [activeRequests].
 @ProviderFor(activeRequests)
@@ -118,7 +138,7 @@ final activeRequestsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ActiveRequestsRef = AutoDisposeFutureProviderRef<List<ActiveRequest>>;
-String _$studentsByStatusHash() => r'c1f0ba1d584343ae72c887905ab9b7f36dbe44fa';
+String _$studentsByStatusHash() => r'73d4b16b01d4dc533927bc8a810fbb9e234c9bf9';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -260,11 +280,11 @@ class _StudentsByStatusProviderElement
   String get statusType => (origin as StudentsByStatusProvider).statusType;
 }
 
-String _$webSocketListenerHash() => r'57bddd0dc0204a0c36646c90507f4cff2aa45ae3';
+String _$webSocketListenerHash() => r'7d817888beb456289988c8717cbe19641365e6a6';
 
 /// See also [webSocketListener].
 @ProviderFor(webSocketListener)
-final webSocketListenerProvider = AutoDisposeProvider<void>.internal(
+final webSocketListenerProvider = Provider<void>.internal(
   webSocketListener,
   name: r'webSocketListenerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -276,7 +296,7 @@ final webSocketListenerProvider = AutoDisposeProvider<void>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef WebSocketListenerRef = AutoDisposeProviderRef<void>;
+typedef WebSocketListenerRef = ProviderRef<void>;
 String _$webSocketNotificationsHash() =>
     r'168fca983f9d87959b88915978e172a30ff18054';
 

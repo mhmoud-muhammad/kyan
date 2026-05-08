@@ -1,5 +1,7 @@
 // lib/core/constants/api_constants.dart
 
+import 'package:myapp/core/constants/storage_keys.dart';
+
 enum Environment { dev, staging, prod }
 
 class ApiConstants {
@@ -36,21 +38,20 @@ class ApiConstants {
   static String get _baseDomain {
     switch (environment) {
       case Environment.prod:
-        return 'https://successive-amandy-tech-code-3beec46e.koyeb.app';
+        return 'https://alkyan.tech';
       case Environment.staging:
-        return 'https://successive-amandy-tech-code-3beec46e.koyeb.app';
+        return 'https://alkyan.tech';
       case Environment.dev:
-        return 'https://successive-amandy-tech-code-3beec46e.koyeb.app';
+        return 'https://alkyan.tech';
     }
   }
 
-//اختلاف في نقطه النهايخ بالنسبه للتحديث التوكن فقط
-// لانو الباك اند بستخدم الريفريش توكن بدون الاصدار
-  static String get refUrl => '$_baseDomain/api$refreshTokenEndpoint';
+  //اختلاف في نقطه النهايخ بالنسبه للتحديث التوكن فقط
+  // لانو الباك اند بستخدم الريفريش توكن بدون الاصدار
+  static String get refUrl => '$_baseDomain/api';
   static String get domain => _baseDomain;
   static String get baseUrl => '$_baseDomain/api/$apiVersion';
   // ================= AUTH ENDPOINTS =================
-
   static const String loginEndpoint = '/auth/login/';
   static const String registerEndpoint = '/auth/register/';
   static const String refreshTokenEndpoint = '/token/refresh/';
@@ -79,16 +80,14 @@ class ApiConstants {
   static const String changePasswordEndpoint = '/user/change-password/';
 
   // ================= STORAGE KEYS =================
-
-  static const String accessTokenKey = 'kyan_access_token';
-  static const String refreshTokenKey = 'kyan_refresh_token';
-  static const String userDataKey = 'kyan_user_data';
-  static const String tokenIssuedAtKey = 'kyan_token_issued_at';
+  static const accessTokenKey = StorageKeys.accessToken;
+  static const refreshTokenKey = StorageKeys.refreshToken;
+  static const tokenIssuedAtKey = StorageKeys.tokenIssuedAt;
 
   // ================= TOKEN =================
   static const int tokenLifetimeMinutes = int.fromEnvironment(
     'TOKEN_LIFETIME',
-    defaultValue: 10,
+    defaultValue: 5,
   );
 
   // (داخل كلاس ApiConstants)

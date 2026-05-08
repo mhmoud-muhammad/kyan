@@ -47,6 +47,12 @@ class AuthFailure extends Failure {
   AuthFailure([super.message = 'خطأ في بيانات الدخول']);
 }
 
+// lib/core/errors/failures.dart
+
 class LocationFailure extends Failure {
-  LocationFailure([super.message = 'فشل الحصول على الموقع']);
+  LocationFailure([
+    super.message =
+        'أنت بعيد عن المدرسة أكثر من 100 متر.\nالرجاء الاقتراب من المدرسة ثم إعادة إرسال الطلب.',
+    int? code,
+  ]) : super(code: code);
 }

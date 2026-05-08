@@ -1,5 +1,6 @@
 // lib/presentation/screens/auth/forgot_password_screen.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,10 +8,12 @@ import 'package:myapp/core/router/go_router_provider.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/domain/entities/reset_password_usecase.dart';
 import 'package:myapp/presentation/providers/auth/reset_password_controller.dart';
-// يجب أن يكون لديك ApiClient أو Dio محقون
+
+import 'package:myapp/core/errors/failures.dart'; // ✅ مهم للـ Failure types
 import '../../../core/utils/validators.dart';
 
-// Providers محلية
+// ملاحظة: هذه providers المحلية غير مستخدمة فعلياً لأنك تعتمد على resetPasswordControllerProvider
+// تركتها كما هي، ويمكنك حذفها لاحقاً إذا تحب.
 final isLoadingProvider = StateProvider<bool>((ref) => false);
 final errorMessageProvider = StateProvider<String?>((ref) => null);
 final successMessageProvider = StateProvider<String?>((ref) => null);
@@ -43,15 +46,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!formKey.currentState!.validate()) return;
 
     if (newPasswordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('كلمتا السر غير متطابقتين')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('كلمتا السر غير متطابقتين')),
+      );
       return;
     }
 
-    await ref
-        .read(resetPasswordControllerProvider.notifier)
-        .resetPassword(
+    await ref.read(resetPasswordControllerProvider.notifier).resetPassword(
           ResetPasswordParams(
             phone: phoneController.text.trim(),
             nationalId: nationalIdController.text.trim(),
@@ -61,25 +62,71 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         );
   }
 
+  // ✅ تحويل أي خطأ إلى رسالة User-friendly
+  String friendlyResetError(Object? err) {
+    if (err == null) return 'حدث خطأ غير متوقع';
+
+    if (err is Failure) {
+      if (err is ValidationFailure) {
+        if (err.errors.isNotEmpty) {
+          return err.errors.values.first;
+        }
+        return err.message.isNotEmpty ? err.message : 'البيانات المدخلة غير صحيحة';
+      }
+
+      if (err is NetworkFailure) {
+        return err.message.isNotEmpty ? err.message : 'لا يوجد اتصال بالإنترنت';
+      }
+
+      if (err is UnauthorizedFailure) {
+        // في نسيان كلمة المرور غالباً معناها بيانات غير صحيحة
+        return 'رقم الهاتف أو رقم الهوية غير صحيح';
+      }
+
+      if (err is ServerFailure) {
+        final msg = err.message.trim();
+        if (msg.isNotEmpty) return msg;
+        return 'تعذر تنفيذ العملية الآن، حاول لاحقًا';
+      }
+
+      return err.message.isNotEmpty ? err.message : 'حدث خطأ غير متوقع';
+    }
+
+    final s = err.toString();
+
+    // fallback heuristics (احتياط)
+    if (s.contains('phone') && s.contains('invalid')) return 'رقم الهاتف غير صحيح';
+    if (s.contains('national') || s.contains('id')) return 'رقم الهوية غير صحيح';
+    if (s.contains('password')) return 'كلمة المرور غير صالحة';
+
+    return 'تعذر إعادة تعيين كلمة المرور، تحقق من البيانات وحاول مرة أخرى';
+  }
+
+  void _clearErrorAndCloseOverlay() {
+    // ✅ تصفير الحالة لإخفاء overlay بدون pop للشاشة
+    // (invalidate يرجّعها لحالة build() الافتراضية)
+    ref.invalidate(resetPasswordControllerProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final resetState = ref.watch(resetPasswordControllerProvider);
 
-    // ✅ عند نجاح العملية رجّع المستخدم لصفحة login بعد ثانيتين
+    // ✅ عند نجاح العملية: رجّع لصفحة login بعد ثانيتين بدون استخدام context
     ref.listen(resetPasswordControllerProvider, (prev, next) {
       next.whenOrNull(
         data: (msg) {
           if (msg == null) return;
           Future.delayed(const Duration(seconds: 2), () {
             final goRouter = ref.read(goRouterProvider);
-            goRouter.go('/login'); // آمن الآن بدون context
+            goRouter.go('/login');
           });
         },
       );
     });
 
     final isLoading = resetState.isLoading;
-    final error = resetState.hasError ? resetState.error.toString() : null;
+    final error = resetState.hasError ? friendlyResetError(resetState.error) : null;
     final success = resetState.asData?.value;
 
     return Scaffold(
@@ -137,7 +184,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                               if (value == null || value.isEmpty) {
                                 return 'رقم الهوية مطلوب';
                               }
-                              if (value.length < 6) {
+                              // ✅ تصحيح الرسالة: أنت تتحقق من 6 لكن تقول 10
+                              if (value.length < 10) {
                                 return 'رقم الهوية يجب أن يكون 10 أرقام على الأقل';
                               }
                               return null;
@@ -165,12 +213,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           ),
                           const SizedBox(height: 30),
 
-                          // ✅ الزر الآن يعمل ويستدعي handleResetPassword
                           _ForgotSubmitButton(
                             isLoading: isLoading,
-                            onPressed: isLoading
-                                ? null
-                                : () => handleResetPassword(),
+                            onPressed: isLoading ? null : handleResetPassword,
                             primaryColor: AppColors.primaryDark,
                           ),
 
@@ -199,13 +244,20 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
 
           if (isLoading) const _ForgotLoadingOverlay(),
-          if (error != null) _ForgotErrorOverlay(message: error),
+
+          if (error != null)
+            _ForgotErrorOverlay(
+              message: error,
+              onClose: _clearErrorAndCloseOverlay,
+            ),
+
           if (success != null) _ForgotSuccessOverlay(message: success),
         ],
       ),
     );
   }
 }
+
 // ==================== مكونات مساعدة ====================
 
 class _ForgotBackground extends StatefulWidget {
@@ -404,9 +456,7 @@ class __ForgotTextFieldState extends State<_ForgotTextField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: widget.primaryColor.withAlpha(
-                          (0.3 * 255).round(),
-                        ),
+                        color: widget.primaryColor.withAlpha((0.3 * 255).round()),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -503,9 +553,7 @@ class __ForgotPasswordFieldState extends State<_ForgotPasswordField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: widget.primaryColor.withAlpha(
-                          (0.3 * 255).round(),
-                        ),
+                        color: widget.primaryColor.withAlpha((0.3 * 255).round()),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -519,10 +567,7 @@ class __ForgotPasswordFieldState extends State<_ForgotPasswordField> {
               validator: widget.validator,
               decoration: InputDecoration(
                 labelText: widget.label,
-                prefixIcon: Icon(
-                  Icons.lock_outline_rounded,
-                  color: widget.primaryColor,
-                ),
+                prefixIcon: Icon(Icons.lock_outline_rounded, color: widget.primaryColor),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureText ? Icons.visibility_off : Icons.visibility,
@@ -669,14 +714,12 @@ class _ForgotLoadingOverlayState extends State<_ForgotLoadingOverlay>
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.9,
-      end: 1.1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _fadeAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.5, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -714,8 +757,8 @@ class _ForgotLoadingOverlayState extends State<_ForgotLoadingOverlay>
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
+                      children: const [
+                        SizedBox(
                           height: 50,
                           width: 50,
                           child: CircularProgressIndicator(
@@ -725,8 +768,8 @@ class _ForgotLoadingOverlayState extends State<_ForgotLoadingOverlay>
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        const Text(
+                        SizedBox(height: 20),
+                        Text(
                           'جاري تغيير كلمة المرور...',
                           style: TextStyle(
                             fontSize: 16,
@@ -748,21 +791,29 @@ class _ForgotLoadingOverlayState extends State<_ForgotLoadingOverlay>
 
 class _ForgotErrorOverlay extends StatelessWidget {
   final String message;
-  const _ForgotErrorOverlay({required this.message});
+  final VoidCallback onClose;
+
+  const _ForgotErrorOverlay({
+    required this.message,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: AbsorbPointer(
-        child: AnimatedOpacity(
-          opacity: 1.0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-          child: Container(
-            color: Colors.black.withAlpha((0.3 * 255).round()),
-            child: Center(
+      child: Material(
+        color: Colors.black.withAlpha((0.3 * 255).round()),
+        child: InkWell(
+          // ✅ الضغط خارج الكارد يغلق
+          onTap: onClose,
+          child: Center(
+            child: InkWell(
+              // ✅ منع إغلاقه عند الضغط داخل الكارد
+              onTap: () {},
+              borderRadius: BorderRadius.circular(20),
               child: Container(
                 padding: const EdgeInsets.all(25),
+                margin: const EdgeInsets.symmetric(horizontal: 24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -794,7 +845,8 @@ class _ForgotErrorOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     TextButton(
-                      onPressed: () => context.pop(),
+                      // ✅ الآن يعمل
+                      onPressed: onClose,
                       child: const Text('حسناً'),
                     ),
                   ],
@@ -807,7 +859,6 @@ class _ForgotErrorOverlay extends StatelessWidget {
     );
   }
 }
-
 class _ForgotSuccessOverlay extends StatelessWidget {
   final String message;
   const _ForgotSuccessOverlay({required this.message});
@@ -839,11 +890,7 @@ class _ForgotSuccessOverlay extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.check_circle_outline,
-                      color: Colors.green,
-                      size: 50,
-                    ),
+                    const Icon(Icons.check_circle_outline, color: Colors.green, size: 50),
                     const SizedBox(height: 20),
                     Text(
                       message,

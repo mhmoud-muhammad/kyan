@@ -2,9 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:myapp/core/errors/exception_mapper.dart';
+import 'package:myapp/core/errors/failures.dart';
+import 'package:myapp/core/network/connectivity_provider.dart';
 // import 'package:myapp/core/errors/failures.dart';
-import 'package:myapp/core/services/websocket_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/domain/entities/active_request.dart';
@@ -35,16 +36,65 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
 
   Future<void> _connectWebSocket() async {
     if (_wsInitialized) return;
+
+    // 1) تحقق من وجود مستخدم
+    final auth = ref.read(authStateProvider);
+    final user = auth.value;
+    if (user == null) {
+      debugPrint('⛔ [WS] user is null, skip connect');
+      return;
+    }
+
+    // 2) تحقق من الإنترنت (من مزودك)
+    final isOnline = ref.read(isOnlineProvider);
+    if (!isOnline) {
+      debugPrint('🌐 [WS] No internet -> skip connect');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ لا يوجد اتصال بالإنترنت'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     _wsInitialized = true;
+
     try {
-      // بدء اتصال WebSocket
-      final service = ref.read(websocketServiceProvider);
+      final service = ref.read(websocketConnectionProvider);
+
+      // 3) اتصال WS
       await service.connectTeacher();
 
-      // الاستماع إلى الرسائل القادمة عبر Stream (إذا كان service يوفر stream)
-      // نفترض أن service يحتوي على getter يسمى onMessage أو messages
+      // (اختياري) رسالة نجاح للمراجعة فقط
+      debugPrint('🟢 [WS] connect ok');
     } catch (e) {
-      // يمكن إضافة معالجة الخطأ حسب الحاجة
+      debugPrint('❌ [WS] connect error: $e');
+
+      // 4) حول الاستثناء إلى Failure برسالة لطيفة
+      final failure = mapExceptionToFailure(e);
+
+      // 5) اعرض رسالة للمستخدم
+      if (mounted) {
+        final msg = failure.message.isNotEmpty
+            ? failure.message
+            : 'تعذر الاتصال بالخدمة، حاول مرة أخرى';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ $msg'), backgroundColor: Colors.red),
+        );
+
+        // (اختياري) لو Unauthorized: وجهه للّوجن
+        // if (failure is UnauthorizedFailure) {
+        //   // مثال:
+        //   context.go('/login');
+        //   // أو اعرض Dialog
+        // }
+      }
+
+      // 6) اسمح بمحاولة لاحقة
+      _wsInitialized = false;
     }
   }
 
@@ -55,16 +105,29 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
 
   @override
   void dispose() {
-    ref.read(websocketServiceProvider).dispose();
+    //ref.read(teacherWebSocketServiceProvider).dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(isOnlineProvider, (prev, next) {
+      if (next == true) {
+        // رجع الإنترنت -> وصل WS + حدّث REST
+        ref.read(websocketConnectionProvider).connectTeacher(force: true);
+        ref.invalidate(activeRequestsProvider);
+        ref.invalidate(dashboardStatsProvider);
+      }
+    });
     ref.watch(webSocketListenerProvider); // ✅ يخلي الـ listener شغال
-    ref.watch(webSocketStudentsProvider); // ✅ أضف هذا السطر (يحافظ على state)
+    ref.watch(webSocketStudentsProvider);
+    final m = ref.watch(webSocketStudentsProvider);
+    debugPrint(
+      'WS map keys=${m.keys} requested=${m['requested']?.length ?? 0}',
+    ); // ✅ أضف هذا السطر (يحافظ على state)
 
     final user = ref.watch(authStateProvider).value;
+    final isOnline = ref.watch(isOnlineProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -123,15 +186,38 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
         iconTheme: const IconThemeData(color: AppColors.onPrimary),
       ),
       drawer: _AppDrawer(user: user),
+
       body: RefreshIndicator(
         onRefresh: () => _refreshData(ref),
         color: AppColors.primary,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!isOnline)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade600,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.wifi_off, color: Colors.white),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'لا يوجد اتصال بالإنترنت — سيتم المحاولة تلقائياً عند عودة الاتصال',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _buildWelcomeHeader(context, user),
               const SizedBox(height: 25),
               const StatsSection(),
@@ -428,7 +514,6 @@ class StatsSection extends ConsumerWidget {
 }
 
 // =================== قسم الطلبات النشطة ===================
-// =================== قسم الطلبات النشطة (معدل) ===================
 class ActiveRequestsSection extends ConsumerWidget {
   const ActiveRequestsSection({super.key});
 
@@ -455,294 +540,205 @@ class ActiveRequestsSection extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => Center(
-            child: Column(
-              children: [
-                Icon(Icons.error_outline, color: AppColors.error, size: 48),
-                const SizedBox(height: 8),
-                Text('فشل تحميل الطلبات: $err'),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () => ref.refresh(activeRequestsProvider),
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
-          ),
+          error: (err, _) {
+            final msg = err is Failure ? err.message : err.toString();
+
+            return Center(
+              child: Column(
+                children: [
+                  Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                  const SizedBox(height: 8),
+
+                  Text(msg),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => ref.refresh(activeRequestsProvider),
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-// ✅ تم تحويلها إلى ConsumerWidget للوصول المباشر لـ ref
 class ActiveRequestCard extends ConsumerWidget {
   final ActiveRequest request;
   const ActiveRequestCard({super.key, required this.request});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return InkWell(
-      onTap: () => _showRequestDetails(context, ref, request),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: AppColors.primary.withAlpha((0.1 * 255).round()),
+    final deliveringIds = ref.watch(deliveringRequestIdsProvider);
+    final isLoading = deliveringIds.contains(request.studentId);
+
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: AppColors.primary.withAlpha((0.1 * 255).round()),
+        ),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            child: Text(
+              request.studentName.isNotEmpty ? request.studentName[0] : '?',
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(child: Text(request.studentName[0])),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    request.studentName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    'ولي الأمر: ${request.parentName}',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 14),
-          ],
-        ),
-      ),
-    );
-  }
+          const SizedBox(width: 15),
 
-  // ✅ تم إضافة معامل ref لاستخدامه بشكل آمن
-  void _showRequestDetails(
-    BuildContext context,
-    WidgetRef ref,
-    ActiveRequest request,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(25, 15, 25, 30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Center(
-              child: Text(
-                'تفاصيل الاستلام',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D3142),
-                ),
-              ),
-            ),
-            const Divider(height: 40, thickness: 1),
-            _detailRow(
-              Icons.person_outline_rounded,
-              'اسم الطالب',
-              request.studentName,
-            ),
-            _detailRow(
-              Icons.family_restroom_outlined,
-              'ولي الأمر',
-              request.parentName,
-            ),
-            _detailRow(
-              Icons.access_time_rounded,
-              'وقت الطلب',
-              DateFormat('hh:mm a').format(request.requestedAt),
-            ),
-            _detailRow(
-              Icons.info_outline_rounded,
-              'الحالة',
-              _getStatusText(request.status),
-            ),
-            const SizedBox(height: 35),
-            Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      side: BorderSide(color: Colors.grey.shade300),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    child: Text(
-                      'إغلاق',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  // ✅ استخدام ref الخارجي (الخاص بالشاشة الرئيسية) مباشرة
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(
-                        Navigator.of(context).context,
-                      );
-
-                      Navigator.pop(context);
-
-                      if (request.studentId <= 0) {
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('معرف الطالب غير صالح'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-
-                      try {
-                        final result = await ref.read(
-                          updateStudentStatusProvider(
-                            UpdateStatusParams(
-                              studentId: request.studentId,
-                              newStatus: 'DELIVERED',
-                            ),
-                          ).future,
-                        );
-
-                        result.fold(
-                          (failure) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('❌ ${failure.message}'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          },
-                          (_) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ تم إتمام التسليم بنجاح'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                            // ✅ استخدام ref مباشرة بدون addPostFrameCallback
-                            // 1) احذف الطلب من قائمة الطلبات النشطة (مضمون بالـ studentId)
-                            ref
-                                .read(webSocketActiveRequestsProvider.notifier)
-                                .removeByStudentId(request.studentId);
-
-                            // 2) حدّث حالة الطالب في مخزن الطلاب
-                            ref
-                                .read(webSocketStudentsProvider.notifier)
-                                .updateStudentStatusLocal(
-                                  request.studentId,
-                                  AttendanceStatus.delivered,
-                                );
-
-                            // 3) حدث الإحصائيات (إذا stats من REST)
-                            ref.invalidate(dashboardStatsProvider);
-
-                            // 4) fallback: لو WS غير متزامن/أو REST هو المصدر
-                            ref.invalidate(activeRequestsProvider);
-                          },
-                        );
-                      } catch (e) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text('❌ حدث خطأ غير متوقع: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle_outline, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'إتمام التسليم',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                Text(
+                  request.studentName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
 
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'REQUESTED':
-        return 'قيد الانتظار';
-      case 'AT_GATE':
-        return 'عند البوابة';
-      case 'DELIVERED':
-        return 'تم التسليم';
-      default:
-        return status;
-    }
-  }
-
-  Widget _detailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: 10),
-          Text('$label: ', style: const TextStyle(color: Colors.grey)),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-              overflow: TextOverflow.ellipsis,
+
+          // ✅ زر إتمام التسليم مباشرة
+          ConstrainedBox(
+            constraints: const BoxConstraints.tightFor(width: 110, height: 38),
+            child: ElevatedButton.icon(
+              onPressed: isLoading
+                  ? null
+                  : () async => _deliverNow(context, ref, request),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_circle_outline, size: 18),
+              label: Text(isLoading ? '...' : 'تسليم'),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _deliverNow(
+    BuildContext context,
+    WidgetRef ref,
+    ActiveRequest request,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (request.studentId <= 0) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('معرف الطالب غير صالح'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // ✅ منع الضغط المتكرر
+    final delivering = ref.read(deliveringRequestIdsProvider);
+    ref.read(deliveringRequestIdsProvider.notifier).state = {
+      ...delivering,
+      request.studentId,
+    };
+
+    // ✅ Optimistic UI: احذف الطلب فورًا
+    ref
+        .read(webSocketActiveRequestsProvider.notifier)
+        .removeByStudentId(request.studentId);
+    ref
+        .read(webSocketStudentsProvider.notifier)
+        .updateStudentStatusLocal(
+          request.studentId,
+          AttendanceStatus.delivered,
+        );
+    ref.invalidate(dashboardStatsProvider);
+
+    try {
+      final result = await ref.read(
+        updateStudentStatusProvider(
+          UpdateStatusParams(
+            studentId: request.studentId,
+            newStatus: 'DELIVERED',
+          ),
+        ).future,
+      );
+
+      result.fold(
+        (failure) {
+          // ❌ رجّع الطلب لو فشل
+          ref.read(webSocketActiveRequestsProvider.notifier).upsert(request);
+          ref
+              .read(webSocketStudentsProvider.notifier)
+              .updateStudentStatusLocal(
+                request.studentId,
+                AttendanceStatus.requested,
+              );
+          ref.invalidate(dashboardStatsProvider);
+
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('❌ ${failure.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        (_) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('✅ تم إتمام التسليم بنجاح'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // fallback: لو REST هو المصدر
+          ref.invalidate(activeRequestsProvider);
+        },
+      );
+    } catch (e) {
+      // ✅ حول أي Exception إلى Failure برسالة مناسبة
+      final failure = mapExceptionToFailure(e);
+
+      // ❌ رجّع الطلب لأن العملية فشلت
+      ref.read(webSocketActiveRequestsProvider.notifier).upsert(request);
+      ref
+          .read(webSocketStudentsProvider.notifier)
+          .updateStudentStatusLocal(
+            request.studentId,
+            AttendanceStatus.requested,
+          );
+      ref.invalidate(dashboardStatsProvider);
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('❌ ${failure.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      // ✅ فكّ اللودنج دائمًا
+      final current = ref.read(deliveringRequestIdsProvider);
+      final copy = {...current}..remove(request.studentId);
+      ref.read(deliveringRequestIdsProvider.notifier).state = copy;
+    }
   }
 }
 
@@ -849,6 +845,7 @@ class _AppDrawer extends ConsumerWidget {
     );
   }
 }
+// ===================  حقوق النشر ===================
 
 class _CopyrightFooter extends StatelessWidget {
   const _CopyrightFooter();

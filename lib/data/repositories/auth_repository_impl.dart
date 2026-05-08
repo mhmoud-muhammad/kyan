@@ -56,7 +56,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final authResponse = await remoteDataSource.login(phone, password);
      
       // 2️⃣ بناء User من البيانات المتاحة (role)
-      final user = User(role: authResponse.role, id: '', name: '', phone: '');
+      final user = User(role: authResponse.role, id: null , name: null, phone: phone);
 
       // 3️⃣ تخزين User محليًا
       await localDataSource.cacheUser(user);

@@ -1,5 +1,7 @@
 // lib/presentation/screens/guardian/guardian_home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:myapp/core/errors/exception_mapper.dart';
+import 'package:myapp/core/network/connectivity_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/errors/failures.dart';
@@ -20,6 +22,7 @@ class GuardianHomeScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final selectedSchool = ref.watch(selectedSchoolProvider);
     final user = authState.value;
+    final isOnline = ref.watch(isOnlineProvider);
     ref.listen(authStateProvider, (previous, next) {
       if (next is AsyncData && next.value == null) {
         if (context.mounted) {
@@ -27,63 +30,126 @@ class GuardianHomeScreen extends ConsumerWidget {
         }
       }
     });
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          selectedSchool == null ? 'مدارسي' : selectedSchool.name,
-          style: AppTextStyles.heading2.copyWith(
-            fontSize: 18,
-            color: AppColors.textPrimary,
+    return PopScope<Object?>(
+      canPop: selectedSchool == null, // ✅ امنع الرجوع (الخروج) لو داخل الطلاب
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        // ✅ بدل ما يخرج التطبيق: ارجع لقائمة المدارس
+        ref.read(selectedSchoolProvider.notifier).clearSelection();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: Text(
+            selectedSchool == null ? 'مدارسي' : selectedSchool.name,
+            style: AppTextStyles.heading2.copyWith(
+              fontSize: 18,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
-        centerTitle: true,
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 1,
-        leading: selectedSchool != null
-            ? Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  // ignore: deprecated_member_use
-                  color: AppColors.primary.withAlpha((0.1 * 255).round()),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                  onPressed: () => ref
-                      .read(selectedSchoolProvider.notifier)
-                      .clearSelection(),
-                ),
-              )
-            : Builder(
-                builder: (context) => Container(
+          centerTitle: true,
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 1,
+          leading: selectedSchool != null
+              ? Container(
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
+                    // ignore: deprecated_member_use
                     color: AppColors.primary.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.menu_rounded, size: 24),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
+                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                    onPressed: () => ref
+                        .read(selectedSchoolProvider.notifier)
+                        .clearSelection(),
+                  ),
+                )
+              : Builder(
+                  builder: (context) => Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha((0.1 * 255).round()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.menu_rounded, size: 24),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                    ),
                   ),
                 ),
+        ),
+        drawer: _AppDrawer(user: user),
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (!isOnline)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade600,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.wifi_off, color: Colors.white),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'لا يوجد اتصال بالإنترنت — سيتم المحاولة تلقائياً عند عودة الاتصال',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: selectedSchool == null
+                      ? const SchoolSelectionView(key: ValueKey('schools'))
+                      : const StudentListView(key: ValueKey('students')),
+                ),
               ),
-      ),
-      drawer: _AppDrawer(user: user),
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          child: selectedSchool == null
-              ? const SchoolSelectionView(key: ValueKey('schools'))
-              : const StudentListView(key: ValueKey('students')),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Failure asFailure(Object err) {
+  if (err is Failure) return err;
+  return mapExceptionToFailure(err);
+}
+
+String friendlyFailureMessage(Failure f) {
+  if (f is LocationFailure) return f.message;
+
+  if (f is ValidationFailure) {
+    if (f.errors.isNotEmpty) return f.errors.values.first;
+    return 'البيانات غير صحيحة';
+  }
+
+  if (f is UnauthorizedFailure) {
+    return 'انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى';
+  }
+
+  if (f is NetworkFailure) return f.message;
+
+  // ✅ الحالة العامة لأي خطأ من السيرفر
+  return f.message.isNotEmpty
+      ? f.message
+      : 'حدث خطأ من الخادم. الرجاء المحاولة مرة أخرى.';
 }
 
 // ===================================================================
@@ -337,12 +403,18 @@ class SchoolSelectionView extends ConsumerWidget {
         );
       },
       error: (err, _) {
-        final failure = err is Failure
-            ? err
-            : ServerFailure('حدث خطأ غير متوقع');
-
+        final failure = asFailure(err);
+        if (failure is NetworkFailure) {
+          return _buildEmptyState(
+            icon: Icons.wifi_off,
+            title: 'لا يوجد إنترنت',
+            message: 'يرجى الاتصال بالإنترنت ثم إعادة المحاولة',
+            actionLabel: 'إعادة المحاولة',
+            onRefresh: () => ref.refresh(mySchoolsProvider.future),
+          );
+        }
         return _buildErrorState(
-          message: failure.message,
+          message: friendlyFailureMessage(failure),
           onRetry: () => ref.refresh(mySchoolsProvider.future),
         );
       },
@@ -434,11 +506,30 @@ class SchoolSelectionView extends ConsumerWidget {
 // ===================================================================
 //                         واجهة عرض الطلاب
 // ===================================================================
-class StudentListView extends ConsumerWidget {
+class StudentListView extends ConsumerStatefulWidget {
   const StudentListView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentListView> createState() => _StudentListViewState();
+}
+
+class _StudentListViewState extends ConsumerState<StudentListView> {
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ ينفذ بعد أول frame (خارج build)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final warmDone = ref.read(locationWarmupDoneProvider);
+      if (!warmDone) {
+        ref.read(locationWarmupDoneProvider.notifier).state = true;
+        await ref.read(locationServiceProvider).warmUpHighAccuracy();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final studentsAsync = ref.watch(studentsBySchoolProvider);
 
     return studentsAsync.when(
@@ -449,11 +540,11 @@ class StudentListView extends ConsumerWidget {
             title: 'لا يوجد أبناء',
             message: 'لا يوجد أبناء مسجلين في هذه المدرسة',
             actionLabel: 'تحديث',
-            onRefresh: () => ref.refresh(studentsBySchoolProvider.future),
+            onRefresh: () => ref.refresh(mySchoolsProvider.future),
           );
         }
         return RefreshIndicator(
-          onRefresh: () => ref.refresh(studentsBySchoolProvider.future),
+          onRefresh: () => ref.refresh(mySchoolsProvider.future),
           color: AppColors.primary,
           backgroundColor: AppColors.surface,
           strokeWidth: 2.5,
@@ -466,12 +557,19 @@ class StudentListView extends ConsumerWidget {
         );
       },
       error: (err, _) {
-        final failure = err is Failure
-            ? err
-            : ServerFailure('حدث خطأ غير متوقع');
+        final failure = asFailure(err);
+        if (failure is NetworkFailure) {
+          return _buildEmptyState(
+            icon: Icons.wifi_off,
+            title: 'لا يوجد إنترنت',
+            message: 'يرجى الاتصال بالإنترنت ثم إعادة المحاولة',
+            actionLabel: 'إعادة المحاولة',
+            onRefresh: () => ref.refresh(mySchoolsProvider.future),
+          );
+        }
         return _buildErrorState(
-          message: failure.message,
-          onRetry: () => ref.refresh(studentsBySchoolProvider.future),
+          message: friendlyFailureMessage(failure),
+          onRetry: () => ref.refresh(mySchoolsProvider.future),
         );
       },
       loading: () => _buildLoadingShimmer(),
@@ -516,7 +614,7 @@ class StudentAttendanceCard extends ConsumerWidget {
         return {
           'color': AppColors.primary,
           'icon': Icons.send_rounded,
-          'text': 'تم الطلب',
+          'text': 'تم إرسال طلب الاستلام',
           'bg': AppColors.primary.withAlpha((0.1 * 255).round()),
         };
       case AttendanceStatus.atGate:
@@ -525,6 +623,20 @@ class StudentAttendanceCard extends ConsumerWidget {
           'icon': Icons.meeting_room_rounded,
           'text': 'عند البوابة',
           'bg': AppColors.primaryDark.withAlpha((0.1 * 255).round()),
+        };
+      case AttendanceStatus.delivered:
+        return {
+          'color': Colors.green.shade700,
+          'icon': Icons.cabin,
+          'text': 'تم التسليم',
+          'bg': Colors.green.withAlpha((0.1 * 255).round()),
+        };
+      case AttendanceStatus.completed:
+        return {
+          'color': Colors.teal,
+          'icon': Icons.verified_rounded,
+          'text': 'مكتمل',
+          'bg': Colors.teal.withAlpha((0.1 * 255).round()),
         };
       default:
         return {
@@ -539,8 +651,18 @@ class StudentAttendanceCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statusInfo = _getStatusInfo(student.status);
-    final bool canRequestPickup = student.status == AttendanceStatus.present;
+    final isOnline = ref.watch(isOnlineProvider);
 
+    final bool canRequestPickup =
+        isOnline && student.status == AttendanceStatus.present;
+
+    final bool alreadyRequested =
+        student.status == AttendanceStatus.requested ||
+        student.status == AttendanceStatus.atGate;
+
+    final bool pickupClosed =
+        student.status == AttendanceStatus.delivered ||
+        student.status == AttendanceStatus.completed;
     // استخدام provider خاص بكل طالب
     final pickupState = ref.watch(pickupRequestForStudentProvider(student.id));
     final isLoading = pickupState is AsyncLoading;
@@ -548,14 +670,16 @@ class StudentAttendanceCard extends ConsumerWidget {
     // الاستماع للنتيجة
     ref.listen(pickupRequestForStudentProvider(student.id), (previous, next) {
       if (next is AsyncError) {
-        final failure = next.error is Failure
-            ? next.error as Failure
-            : ServerFailure('حدث خطأ غير متوقع');
+        final failure = asFailure(next.error ?? 'Unknown error');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(failure.message),
+            content: Text(friendlyFailureMessage(failure)),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       } else if (previous is AsyncLoading && next is AsyncData) {
@@ -573,6 +697,37 @@ class StudentAttendanceCard extends ConsumerWidget {
         Future.microtask(() => ref.refresh(studentsBySchoolProvider.future));
       }
     });
+
+    Widget buildDisabledAction({
+      required IconData icon,
+      required String text,
+    }) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.textHint.withAlpha((0.08 * 255).round()),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: AppColors.textHint),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textHint,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 300 + (index * 100)),
@@ -644,11 +799,29 @@ class StudentAttendanceCard extends ConsumerWidget {
                   ],
                 ),
 
-                if (canRequestPickup) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, thickness: 0.5),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(height: 1, thickness: 0.5),
+                ),
+
+                if (!isOnline) ...[
+                  buildDisabledAction(
+                    icon: Icons.wifi_off_rounded,
+                    text: 'لا يوجد إنترنت',
                   ),
+                ] else if (pickupClosed) ...[
+                  buildDisabledAction(
+                    icon: Icons.verified_rounded,
+                    text: 'تم إغلاق الطلب (تم التسليم)',
+                  ),
+                ] else if (alreadyRequested) ...[
+                  buildDisabledAction(
+                    icon: Icons.hourglass_top_rounded,
+                    text: student.status == AttendanceStatus.atGate
+                        ? 'الطالب عند البوابة'
+                        : 'تم إرسال الطلب بالفعل',
+                  ),
+                ] else if (student.status == AttendanceStatus.present) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -700,6 +873,11 @@ class StudentAttendanceCard extends ConsumerWidget {
                               ],
                             ),
                     ),
+                  ),
+                ] else ...[
+                  buildDisabledAction(
+                    icon: Icons.info_outline_rounded,
+                    text: 'لا يمكن طلب الاستلام حسب حالة الطالب الحالية',
                   ),
                 ],
               ],

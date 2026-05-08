@@ -41,7 +41,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 30),
 
                 Text(
-                  user.name,
+                  user.name != null ? user.name! : "اسم المستخدم",
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -105,11 +105,5 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  // Widget _buildTile(IconData icon, String title, String value) {
-  //   return ListTile(
-  //     leading: Icon(icon),
-  //     title: Text(title),
-  //     subtitle: Text(value),
-  //   );
-  // }
+
 }

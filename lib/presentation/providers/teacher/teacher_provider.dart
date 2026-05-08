@@ -1,4 +1,6 @@
 // lib/presentation/providers/teacher/teacher_provider.dart
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,17 +17,39 @@ import 'package:myapp/domain/entities/active_request.dart';
 import 'package:myapp/core/errors/failures.dart';
 import 'package:dartz/dartz.dart';
 import 'package:myapp/core/constants/api_constants.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:myapp/core/services/local_notification_service.dart';
 import 'package:myapp/main.dart'; // فيه flutterLocalNotificationsPluginProvider
 
-
 part 'teacher_provider.g.dart';
 
-final localNotificationServiceProvider = Provider<LocalNotificationService>((ref) {
+final localNotificationServiceProvider = Provider<LocalNotificationService>((
+  ref,
+) {
   final plugin = ref.watch(flutterLocalNotificationsPluginProvider);
   return LocalNotificationService(plugin);
 });
+
+final wsLastStatusByStudentProvider = StateProvider<Map<int, String>>(
+  (ref) => <int, String>{},
+);
+
+final wsSeenPickupIdsProvider = StateProvider<Set<int>>((ref) => <int>{});
+final deliveringRequestIdsProvider = StateProvider<Set<int>>((ref) => <int>{});
+
+AttendanceStatus _mapWsStatusToEnum(String status) {
+  switch (status) {
+    case 'PRESENT':
+      return AttendanceStatus.present;
+    case 'REQUESTED':
+      return AttendanceStatus.requested;
+    case 'AT_GATE':
+      return AttendanceStatus.atGate;
+    case 'DELIVERED':
+      return AttendanceStatus.delivered;
+    default:
+      return AttendanceStatus.unknown;
+  }
+}
 
 String normalizeStatusKey(String statusType) {
   final raw = statusType.trim();
@@ -102,23 +126,36 @@ final updateStudentStatusProvider =
 
       return await repo.updateStudentStatus(params.studentId, params.newStatus);
     });
+@riverpod
+List<ActiveRequest> wsDerivedActiveRequests(WsDerivedActiveRequestsRef ref) {
+  final map = ref.watch(webSocketStudentsProvider);
+  final requested = map['requested'] ?? const <Student>[];
+
+  return requested.map((s) {
+    return ActiveRequest(
+      id: s.id, // مؤقت
+      studentId: s.id,
+      studentName: s.name,
+      parentName: '', // إذا ما عندك اسم ولي الأمر من WS
+      status: 'REQUESTED',
+      requestedAt: DateTime.now(), // أو وقت آخر لو متوفر
+    );
+  }).toList();
+}
 
 @riverpod
 AsyncValue<List<ActiveRequest>> unifiedActiveRequests(
   UnifiedActiveRequestsRef ref,
 ) {
-  // ✅ بيانات لحظية
-  final wsRequests = ref.watch(webSocketActiveRequestsProvider);
-
-  // ✅ بيانات REST
+  final wsRequests = ref.watch(wsDerivedActiveRequestsProvider);
   final restAsync = ref.watch(activeRequestsProvider);
 
-  // إذا وصل WebSocket وفيه بيانات -> اعتمدها
+  // إذا WS عنده طلبات -> اعرضها
   if (wsRequests.isNotEmpty) {
     return AsyncValue.data(wsRequests);
   }
 
-  // غير ذلك اعرض REST
+  // وإلا fallback على REST
   return restAsync;
 }
 
@@ -192,39 +229,13 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
       //   print('🔍 Item: $item');
       // }
       return data.map((json) => ActiveRequest.fromJson(json)).toList();
+    } on DioException {
+      rethrow;
     } catch (e) {
-      throw ServerException('فشل تحميل الطلبات النشطة: $e');
+      throw ServerException('فشل تحميل الطلبات النشطة');
     }
   }
 
-  // داخل TeacherRemoteDataSourceImpl في ملف teacher_provider.dart
-
-  // @override
-  // Future<List<Student>> getStudentsByStatus(String statusType) async {
-  //   try {
-  //     // 1. تحويل الـ type إلى القيمة المناسبة لـ Query Parameter
-  //     final String apiStatus = _mapStatusTypeToApi(statusType);
-
-  //     // 2. إذا كان النوع 'total'، قد لا نحتاج لفلتر status
-  //     final Map<String, dynamic> queryParams = statusType == 'total'
-  //         ? <String, dynamic>{}
-  //         : <String, dynamic>{'status': apiStatus};
-
-  //     final response = await apiClient.get(
-  //       ApiConstants
-  //           .updateStudentStatusEndpoint, // تأكد من المسار الصحيح من ApiConstants
-  //       queryParameters: queryParams,
-  //     );
-
-  //     final List<dynamic> data = response.data is List
-  //         ? response.data
-  //         : (response.data['results'] as List? ?? []);
-
-  //     return data.map((json) => Student.fromJson(json)).toList();
-  //   } catch (e) {
-  //     throw ServerException('فشل تحميل قائمة الطلاب: $e');
-  //   }
-  // }
   @override
   Future<List<Student>> getStudentsByStatus(String statusType) async {
     try {
@@ -282,8 +293,8 @@ class TeacherRepositoryImpl implements TeacherRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return Left(mapExceptionToFailure(e as Exception));
-    }
+  return Left(mapExceptionToFailure(e));
+}
   }
 
   @override
@@ -295,7 +306,7 @@ class TeacherRepositoryImpl implements TeacherRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return Left(ServerFailure('حدث خطأ غير متوقع في الإحصائيات'));
+      return Left(mapExceptionToFailure(e));
     }
   }
 
@@ -308,7 +319,9 @@ class TeacherRepositoryImpl implements TeacherRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return Left(ServerFailure('حدث خطأ غير متوقع في الطلبات النشطة'));
+      return Left(
+        mapExceptionToFailure(e is Exception ? e : Exception(e.toString())),
+      );
     }
   }
 
@@ -323,7 +336,7 @@ class TeacherRepositoryImpl implements TeacherRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return Left(ServerFailure('حدث خطأ غير متوقع في جلب الطلاب'));
+      return Left(mapExceptionToFailure(e));
     }
   }
 }
@@ -343,8 +356,7 @@ Future<TeacherDashboardStats> dashboardStats(DashboardStatsRef ref) {
       .watch(teacherRepositoryProvider)
       .getDashboardStats()
       .then(
-        (result) =>
-            result.fold((failure) => throw failure.message, (stats) => stats),
+        (result) => result.fold((failure) => throw failure, (stats) => stats),
       );
 }
 
@@ -373,10 +385,8 @@ Future<List<ActiveRequest>> activeRequests(ActiveRequestsRef ref) {
       .watch(teacherRepositoryProvider)
       .getActiveRequests()
       .then(
-        (result) => result.fold(
-          (failure) => throw failure.message,
-          (requests) => requests,
-        ),
+        (result) =>
+            result.fold((failure) => throw failure, (requests) => requests),
       );
 }
 
@@ -391,7 +401,7 @@ Future<List<Student>> studentsByStatus(
       .then(
         (result) => result.fold((failure) {
           // print('❌ studentsByStatus error: $failure');
-          throw failure.message;
+          throw failure;
         }, (students) => students),
       );
 }
@@ -413,53 +423,26 @@ class WebSocketNotifications extends _$WebSocketNotifications {
   }
 }
 
-// Provider للتحكم باتصال WebSocket وتوفير الخدمة
-final websocketConnectionProvider = Provider((ref) {
-  final service = ref.watch(websocketServiceProvider);
-  ref.onDispose(() => service.dispose());
-  return service;
+final webSocketServiceProvider = Provider<WebSocketService>((ref) {
+  final apiClient = ref.read(apiClientProvider);
+  return WebSocketService(apiClient);
 });
 
-// مستمع WebSocket (يبدأ التشغيل تلقائياً عند استخدامه)
-// @riverpod
-// void webSocketListener(WebSocketListenerRef ref) {
-//   final service = ref.watch(websocketConnectionProvider);
-
-//   final subscription = service.messages.listen((data) {
-//     final action = data['action']?.toString();
-//     debugPrint('🟣 [WS Listener] action=$action');
-
-//     if (action == 'NEW_NOTIFICATION') {
-//       ref.read(webSocketNotificationsProvider.notifier).addNotification(data);
-//       return;
-//     }
-
-//     final studentsData = data['students'];
-//     if (studentsData is List) {
-//       ref
-//           .read(webSocketStudentsProvider.notifier)
-//           .updateFromWebSocket(studentsData);
-
-//       final requests = studentsData
-//           .map((e) => ActiveRequest.fromWebSocket(e))
-//           .toList();
-
-//       ref
-//           .read(webSocketActiveRequestsProvider.notifier)
-//           .updateRequests(requests);
-
-//       ref.invalidate(dashboardStatsProvider);
-//     }
-//   });
-
-//   ref.onDispose(subscription.cancel);
-// }
-@riverpod
+// Provider للتحكم باتصال WebSocket وتوفير الخدمة
+final websocketConnectionProvider = Provider<WebSocketService>((ref) {
+  return ref.watch(webSocketServiceProvider);
+});
+@Riverpod(keepAlive: true)
 void webSocketListener(WebSocketListenerRef ref) {
   final service = ref.watch(websocketConnectionProvider);
+  Future.microtask(() => service.connectTeacher());
 
   final subscription = service.messages.listen((data) {
+    debugPrint(
+      '🧠 [WS Listener] FULL => ${const JsonEncoder.withIndent('  ').convert(data)}',
+    );
     final action = data['action']?.toString();
+    //final wsSeenPickupIdsProvider = StateProvider<Set<int>>((ref) => <int>{});
     debugPrint('🟣 [WS Listener] action=$action');
 
     // إشعارات
@@ -470,35 +453,48 @@ void webSocketListener(WebSocketListenerRef ref) {
 
     // ✅ طلب استلام جديد
     if (action == 'PICKUP_REQUEST_CREATED') {
-  final payload = data['payload'];
+      final payload = data['payload'];
 
-  if (payload is Map<String, dynamic>) {
-    final req = ActiveRequest.fromJson(payload);
+      if (payload is Map<String, dynamic>) {
+        final req = ActiveRequest.fromJson(payload);
 
-    // (1) ✅ تحديث شاشة الأستاذ (الطلبات النشطة)
-    ref.read(webSocketActiveRequestsProvider.notifier).upsert(req);
+        // ✅ Dedup
+        final seen = ref.read(wsSeenPickupIdsProvider);
+        if (req.id != 0 && seen.contains(req.id)) return;
+        if (req.id != 0) {
+          ref.read(wsSeenPickupIdsProvider.notifier).state = {...seen, req.id};
+        }
 
-    // (2) ✅ إضافة إشعار داخل التطبيق
-    final message = 'طلب استلام جديد للطالب: ${req.studentName}';
-    ref.read(webSocketNotificationsProvider.notifier).addNotification({
-      'message': message,
-      'type': 'PICKUP_REQUEST_CREATED',
-      'payload': payload,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+        // (1) ✅ تحديث الداشبورد: الطلب يظهر فوراً
+        ref.read(webSocketActiveRequestsProvider.notifier).upsert(req);
 
-    // (3) ✅ إشعار في ستارة الهاتف (Local Notification)
-    ref.read(localNotificationServiceProvider).showPickupRequest(
-      id: req.id == 0 ? DateTime.now().millisecondsSinceEpoch ~/ 1000 : req.id,
-      title: 'طلب استلام جديد',
-      body: message,
-    );
+        // (2) ✅ إشعار داخل التطبيق (قائمة التنبيهات)
+        final message = 'طلب استلام جديد للطالب: ${req.studentName}';
+        ref.read(webSocketNotificationsProvider.notifier).addNotification({
+          'message': message,
+          'type': 'PICKUP_REQUEST_CREATED',
+          'payload': payload,
+          'created_at': DateTime.now().toIso8601String(),
+        });
 
-    // (اختياري) تحديث stats
-    ref.invalidate(dashboardStatsProvider);
-  }
-  return;
-}
+        // (3) ✅ إشعار ستارة الهاتف
+        final notifId = req.id == 0
+            ? DateTime.now().millisecondsSinceEpoch ~/ 1000
+            : req.id;
+
+        ref
+            .read(localNotificationServiceProvider)
+            .showPickupRequest(
+              id: notifId,
+              title: 'طلب استلام جديد',
+              body: message,
+            );
+
+        // (اختياري) stats
+        ref.invalidate(dashboardStatsProvider);
+      }
+      return;
+    }
 
     // ✅ تحديث طلب (تغيير حالة مثلاً)
     if (action == 'PICKUP_REQUEST_UPDATED') {
@@ -515,16 +511,125 @@ void webSocketListener(WebSocketListenerRef ref) {
     if (action == 'PICKUP_REQUEST_REMOVED') {
       final requestId = data['request_id'];
       if (requestId is int) {
-        ref.read(webSocketActiveRequestsProvider.notifier).removeById(requestId);
+        ref
+            .read(webSocketActiveRequestsProvider.notifier)
+            .removeById(requestId);
         ref.invalidate(dashboardStatsProvider);
       }
+      return;
+    }
+
+    if (action == 'UPDATE_STUDENT_STATUS') {
+      final studentId = data['student_id'];
+      final fullName = data['full_name']?.toString() ?? '';
+      final status = data['status']?.toString().toUpperCase() ?? '';
+
+      if (studentId is int) {
+        // 0) اقرأ آخر حالة محفوظة للطالب (قبل التحديث)
+        final lastMap = ref.read(wsLastStatusByStudentProvider);
+        final prev = lastMap[studentId]; // ممكن تكون null أول مرة
+
+        // 1) حدّث خريطة آخر حالة (حتى نمنع تكرار إشعار REQUESTED)
+        ref.read(wsLastStatusByStudentProvider.notifier).state = {
+          ...lastMap,
+          studentId: status,
+        };
+
+        // 2) حدّث مخزن الطلاب دائماً (حتى الإحصائيات والقوائم تتحدث)
+        final newStatusEnum = _mapWsStatusToEnum(status);
+        ref
+            .read(webSocketStudentsProvider.notifier)
+            .updateStudentStatusLocal(studentId, newStatusEnum);
+
+        // 3) اعتبره "طلب استلام جديد" فقط لو: صار REQUESTED وكان قبلها ليس REQUESTED
+        final isNewPickup = (status == 'REQUESTED' && prev != 'REQUESTED');
+
+        // ✅ TODO (المطلوب): نفّذ الإجراءات هنا
+        if (isNewPickup) {
+          // (A) جهّز request object (السيرفر لا يرسل request_id، فنستخدم studentId كـ id مؤقت)
+          final req = ActiveRequest(
+            id: studentId, // مؤقتاً
+            studentId: studentId,
+            studentName: fullName,
+            parentName: '', // لو السيرفر لا يرسلها
+            status: 'REQUESTED',
+            requestedAt: DateTime.now(),
+          );
+
+          // (B) حدّث/أضف الطلب لقائمة الطلبات النشطة
+          ref.read(webSocketActiveRequestsProvider.notifier).upsert(req);
+
+          // (C) إشعار داخل التطبيق (قائمة التنبيهات)
+          final message = 'طلب استلام جديد للطالب: $fullName';
+          ref.read(webSocketNotificationsProvider.notifier).addNotification({
+            'message': message,
+            'type': 'PICKUP_REQUEST_CREATED',
+            'payload': data,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+
+          // (D) إشعار ستارة الهاتف (Local Notification)
+          final notifId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          ref
+              .read(localNotificationServiceProvider)
+              .showPickupRequest(
+                id: notifId,
+                title: 'طلب استلام جديد',
+                body: message,
+              );
+
+          // (E) تحديث الإحصائيات
+          ref.invalidate(dashboardStatsProvider);
+        }
+
+        // 4) عند DELIVERED: احذف الطلب من القائمة (بدون إشعار)
+        if (status == 'DELIVERED') {
+          ref
+              .read(webSocketActiveRequestsProvider.notifier)
+              .removeByStudentId(studentId);
+          ref.invalidate(dashboardStatsProvider);
+        }
+      }
+
       return;
     }
 
     // (اختياري) إذا عندك رسالة “طلاب” خليها للطلاب فقط
     final studentsData = data['students'];
     if (studentsData is List) {
-      ref.read(webSocketStudentsProvider.notifier).updateFromWebSocket(studentsData);
+      ref
+          .read(webSocketStudentsProvider.notifier)
+          .updateFromWebSocket(studentsData);
+
+      // ✅ استخرج الطلبات من الطلاب الذين status=REQUESTED
+      final requests = <ActiveRequest>[];
+      final last = <int, String>{};
+      for (final item in studentsData) {
+        if (item is Map<String, dynamic>) {
+          final id = item['id'];
+          final st = item['status']?.toString().toUpperCase();
+          if (id is int && st != null) {
+            last[id] = st;
+
+            if (st == 'REQUESTED') {
+              requests.add(
+                ActiveRequest(
+                  id: id,
+                  studentId: id,
+                  studentName: item['full_name'] ?? '',
+                  parentName: '',
+                  status: 'REQUESTED',
+                  requestedAt: DateTime.now(),
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      ref.read(webSocketActiveRequestsProvider.notifier).setAll(requests);
+      ref.read(wsLastStatusByStudentProvider.notifier).state = last;
+
       ref.invalidate(dashboardStatsProvider);
       return;
     }
@@ -532,6 +637,7 @@ void webSocketListener(WebSocketListenerRef ref) {
 
   ref.onDispose(subscription.cancel);
 }
+
 // @riverpod
 // class WebSocketActiveRequests extends _$WebSocketActiveRequests {
 //   @override
@@ -566,13 +672,15 @@ class WebSocketActiveRequests extends _$WebSocketActiveRequests {
     state = state.where((e) => e.id != id).toList();
   }
 
-void removeByStudentId(int studentId) {
-  state = state.where((r) => r.studentId != studentId).toList();
-}
+  void removeByStudentId(int studentId) {
+    state = state.where((r) => r.studentId != studentId).toList();
+  }
+
   void clear() {
     state = [];
   }
 }
+
 // مزخزن لقوائم الطلاب المستلمة عبر WebSocket
 // مزود لتخزين قوائم الطلاب المستلمة عبر WebSocket حسب الحالة
 @riverpod
@@ -626,62 +734,60 @@ class WebSocketStudents extends _$WebSocketStudents {
     debugPrint('🟢 [WebSocketStudents] state updated.');
   }
 
-void updateStudentStatusLocal(int studentId, AttendanceStatus newStatus) {
-  // حوّل enum إلى key map المستخدمة في state
-  String keyOf(AttendanceStatus s) {
-    switch (s) {
-      case AttendanceStatus.present:
-        return 'present';
-      case AttendanceStatus.requested:
-        return 'requested';
-      case AttendanceStatus.atGate:
-        return 'atGate';
-      case AttendanceStatus.delivered:
-        return 'delivered';
-      default:
-        return 'unknown';
+  void updateStudentStatusLocal(int studentId, AttendanceStatus newStatus) {
+    // حوّل enum إلى key map المستخدمة في state
+    String keyOf(AttendanceStatus s) {
+      switch (s) {
+        case AttendanceStatus.present:
+          return 'present';
+        case AttendanceStatus.requested:
+          return 'requested';
+        case AttendanceStatus.atGate:
+          return 'atGate';
+        case AttendanceStatus.delivered:
+          return 'delivered';
+        default:
+          return 'unknown';
+      }
     }
-  }
 
-  final oldState = state;
-  final newMap = <String, List<Student>>{};
+    final oldState = state;
+    final newMap = <String, List<Student>>{};
 
-  // انسخ القوائم
-  oldState.forEach((k, v) => newMap[k] = [...v]);
+    // انسخ القوائم
+    oldState.forEach((k, v) => newMap[k] = [...v]);
 
-  Student? found;
-  String? oldKey;
+    Student? found;
 
-  for (final entry in newMap.entries) {
-    final idx = entry.value.indexWhere((s) => s.id == studentId);
-    if (idx != -1) {
-      found = entry.value[idx];
-      oldKey = entry.key;
-      entry.value.removeAt(idx);
-      break;
+    for (final entry in newMap.entries) {
+      final idx = entry.value.indexWhere((s) => s.id == studentId);
+      if (idx != -1) {
+        found = entry.value[idx];
+        entry.value.removeAt(idx);
+        break;
+      }
     }
+
+    // لو الطالب غير موجود أساساً، ما نقدر نحدثه
+    if (found == null) return;
+
+    final updated = Student(
+      id: found.id,
+      name: found.name,
+      status: newStatus,
+      schoolName: found.schoolName,
+      avatarUrl: found.avatarUrl,
+    );
+
+    final newKey = keyOf(newStatus);
+    newMap.putIfAbsent(newKey, () => []);
+    newMap[newKey] = [updated, ...newMap[newKey]!];
+
+    // نظّف قوائم فاضية (اختياري)
+    newMap.removeWhere((k, v) => v.isEmpty);
+
+    state = newMap;
   }
-
-  // لو الطالب غير موجود أساساً، ما نقدر نحدثه
-  if (found == null) return;
-
-  final updated = Student(
-    id: found.id,
-    name: found.name,
-    status: newStatus,
-    schoolName: found.schoolName,
-    avatarUrl: found.avatarUrl,
-  );
-
-  final newKey = keyOf(newStatus);
-  newMap.putIfAbsent(newKey, () => []);
-  newMap[newKey] = [updated, ...newMap[newKey]!];
-
-  // نظّف قوائم فاضية (اختياري)
-  newMap.removeWhere((k, v) => v.isEmpty);
-
-  state = newMap;
-}
 
   AttendanceStatus _parseStatus(String status) {
     switch (status) {

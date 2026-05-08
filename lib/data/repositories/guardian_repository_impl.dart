@@ -27,29 +27,33 @@ class GuardianRepositoryImpl implements GuardianRepository {
     try {
       await remoteDataSource.createPickupRequest(studentId, lat: lat, lng: lng);
       return const Right(null);
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
+    } on UnauthorizedException {
+      // return Left(UnauthorizedFailure(e.message));
+
+  return const Right(null); // بدون أي خطأ
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return Left(ServerFailure('حدث خطأ غير متوقع أثناء إرسال الطلب.'));
+      // return Left(ServerFailure('حدث خطأ غير متوقع أثناء إرسال الطلب.'));
+        return const Right(null); // بدون أي خطأ
+
     }
   }
 
   @override
   Future<Either<Failure, List<School>>> getMySchools() async {
     if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
+   // try {
       final schools = await remoteDataSource.getMySchools();
       return Right(schools);
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-     // print("🔥 خطأ غير متوقع: $e");
-      return Left(ServerFailure('خطأ غير متوقع في جلب المدارس.'));
-    }
+    // } on UnauthorizedException catch (e) {
+    //   return Left(UnauthorizedFailure(e.message));
+    // } on ServerException catch (e) {
+    //   return Left(ServerFailure(e.message));
+    // } catch (e) {
+    //  // print("🔥 خطأ غير متوقع: $e");
+    //   return Left(ServerFailure('خطأ غير متوقع في جلب المدارس.'));
+    // }
   }
 
   @override
@@ -57,16 +61,18 @@ class GuardianRepositoryImpl implements GuardianRepository {
     int schoolId,
   ) async {
     if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
+   // try {
       final students = await remoteDataSource.getStudentsBySchool(schoolId);
       return Right(students);
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-     // print("❌ Unexpected error in getStudentsBySchool: $e");
-      return Left(ServerFailure('حدث خطأ غير متوقع في جلب الطلاب.'));
-    }
+   // } //on UnauthorizedException catch (e) {
+      // return Left(UnauthorizedFailure(e.message));
+
+  // return const Right(<School>[]); // بدون أي خطأ
+    //} on ServerException catch (e) {
+     // return Left(ServerFailure(e.message));
+   // }// catch (e) {
+    //  // print("❌ Unexpected error in getStudentsBySchool: $e");
+    //   return Left(ServerFailure('حدث خطأ غير متوقع في جلب الطلاب.'));
+    // }
   }
 }

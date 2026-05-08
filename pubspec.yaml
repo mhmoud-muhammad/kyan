@@ -51,6 +51,7 @@ flutter:
   assets:
     - assets/images/kyan.png
     - assets/images/kyan3.png
+    - assets/images/kyanicon.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -78,9 +79,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: false
-  image_path: assets/images/kyan.png
+  image_path: assets/images/kyanicon.png
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: assets/images/kyan.png
+  adaptive_icon_foreground: assets/images/kyanicon.png

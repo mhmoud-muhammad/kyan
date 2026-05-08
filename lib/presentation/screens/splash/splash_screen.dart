@@ -66,32 +66,83 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _checkAuth();
   }
 
- Future<void> _checkAuth() async {
-  // ننتظر انتهاء الأنيميشن أو وقت كافٍ
-  await Future.delayed(const Duration(milliseconds: 3000));
+//  Future<void> _checkAuth() async {
+//   // ننتظر انتهاء الأنيميشن أو وقت كافٍ
+//   await Future.delayed(const Duration(milliseconds: 3000));
 
+//   if (!mounted) return;
+
+//   final localDataSource = ref.read(authLocalDataSourceProvider);
+//   final isAuthenticated = await localDataSource.hasValidToken();
+
+//   if (!mounted) return; // ✅ تحقق من mounted بعد async call
+
+//   if (!isAuthenticated) {
+//     if (!mounted) return;
+//     context.go('/login');
+//     return;
+//   }
+
+//   final user = await localDataSource.getCachedUser();
+
+//   if (!mounted) return; // ✅ تحقق من mounted قبل استخدام context
+//   if (user == null) {
+//     context.go('/login');
+//     return;
+//   }
+
+//   final role = user.role.toUpperCase();
+//   switch (role) {
+//     case 'PARENT':
+//     case 'GUARDIAN':
+//       context.go('/guardian');
+//       break;
+//     case 'TEACHER':
+//       context.go('/teacher');
+//       break;
+//     case 'MANAGER':
+//       context.go('/manager');
+//       break;
+//     default:
+//       context.go('/login');
+//   }
+// }
+ Future<void> _checkAuth() async {
+  await Future.delayed(const Duration(milliseconds: 3000));
   if (!mounted) return;
 
   final localDataSource = ref.read(authLocalDataSourceProvider);
   final isAuthenticated = await localDataSource.hasValidToken();
-
-  if (!mounted) return; // ✅ تحقق من mounted بعد async call
+  if (!mounted) return;
 
   if (!isAuthenticated) {
-    if (!mounted) return;
     context.go('/login');
     return;
   }
 
   final user = await localDataSource.getCachedUser();
+  if (!mounted) return;
 
-  if (!mounted) return; // ✅ تحقق من mounted قبل استخدام context
   if (user == null) {
     context.go('/login');
     return;
   }
 
   final role = user.role.toUpperCase();
+
+  // ✅ اطلب إذن الموقع فقط للـ Guardian/Parent
+  // if (role == 'PARENT' || role == 'GUARDIAN') {
+  //   final ls = ref.read(locationServiceProvider);
+
+  //   // لا توقف مسار الدخول حتى لو رفض، بس اطلب مرة
+  //   await ls.ensurePermission();
+
+  //   // (اختياري) warmup بسيط عشان أول طلب يكون أسرع
+  //   await ls.warmUpHighAccuracy();
+  // }
+
+  if (!mounted) return;
+
   switch (role) {
     case 'PARENT':
     case 'GUARDIAN':
