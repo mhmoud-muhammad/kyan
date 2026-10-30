@@ -14,6 +14,12 @@ val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+} else if (gradle.startParameter.taskNames.any { it.contains("Release") }) {
+    // نوقف البناء بدل أن نوقّع بمفتاح debug بصمت (Google Play يرفضه)
+    throw GradleException(
+        "لم يتم العثور على ${keystorePropertiesFile.absolutePath}\n" +
+            "أنشئه من android/key.properties.example لتوقيع نسخة النشر بمفتاحك.",
+    )
 }
 
 android {
@@ -51,13 +57,8 @@ android {
 
     buildTypes {
         release {
-            // Google Play يرفض التطبيقات الموقّعة بمفتاح debug.
-            // إذا لم يوجد key.properties نستخدم debug فقط لتجربة `flutter run --release` محلياً.
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // Google Play يرفض التطبيقات الموقّعة بمفتاح debug
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
