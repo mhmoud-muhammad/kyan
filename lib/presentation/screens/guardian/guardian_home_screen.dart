@@ -1,6 +1,7 @@
 // lib/presentation/screens/guardian/guardian_home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:myapp/core/errors/exception_mapper.dart';
+import 'package:myapp/core/errors/error_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:myapp/core/network/connectivity_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -126,31 +127,6 @@ class GuardianHomeScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-Failure asFailure(Object err) {
-  if (err is Failure) return err;
-  return mapExceptionToFailure(err);
-}
-
-String friendlyFailureMessage(Failure f) {
-  if (f is LocationFailure) return f.message;
-
-  if (f is ValidationFailure) {
-    if (f.errors.isNotEmpty) return f.errors.values.first;
-    return 'البيانات غير صحيحة';
-  }
-
-  if (f is UnauthorizedFailure) {
-    return 'انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى';
-  }
-
-  if (f is NetworkFailure) return f.message;
-
-  // ✅ الحالة العامة لأي خطأ من السيرفر
-  return f.message.isNotEmpty
-      ? f.message
-      : 'حدث خطأ من الخادم. الرجاء المحاولة مرة أخرى.';
 }
 
 // ===================================================================
@@ -415,7 +391,7 @@ class SchoolSelectionView extends ConsumerWidget {
           );
         }
         return _buildErrorState(
-          message: friendlyFailureMessage(failure),
+          message: failureMessage(failure),
           onRetry: () => ref.refresh(mySchoolsProvider.future),
         );
       },
@@ -571,7 +547,7 @@ class _StudentListViewState extends ConsumerState<StudentListView> {
           );
         }
         return _buildErrorState(
-          message: friendlyFailureMessage(failure),
+          message: failureMessage(failure),
           onRetry: () => ref.refresh(mySchoolsProvider.future),
         );
       },
@@ -656,9 +632,6 @@ class StudentAttendanceCard extends ConsumerWidget {
     final statusInfo = _getStatusInfo(student.status);
     final isOnline = ref.watch(isOnlineProvider);
 
-    final bool canRequestPickup =
-        isOnline && student.status == AttendanceStatus.present;
-
     final bool alreadyRequested =
         student.status == AttendanceStatus.requested ||
         student.status == AttendanceStatus.atGate;
@@ -673,16 +646,34 @@ class StudentAttendanceCard extends ConsumerWidget {
     // الاستماع للنتيجة
     ref.listen(pickupRequestForStudentProvider(student.id), (previous, next) {
       if (next is AsyncError) {
-        final failure = asFailure(next.error ?? 'Unknown error');
+        final failure = asFailure(next.error);
+        // انتهاء الجلسة يُعالج مركزياً (تحويل لصفحة الدخول)
+        if (failure is UnauthorizedFailure) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(friendlyFailureMessage(failure)),
-            backgroundColor: AppColors.error,
+            content: Text(failureMessage(failure)),
+            backgroundColor: failure is LocationFailure
+                ? const Color(0xFFFF8C42)
+                : AppColors.error,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            action: failure is PermissionFailure && failure.requiresSettings
+                ? SnackBarAction(
+                    label: 'الإعدادات',
+                    textColor: Colors.white,
+                    onPressed: () async {
+                      if (await Geolocator.isLocationServiceEnabled()) {
+                        await Geolocator.openAppSettings();
+                      } else {
+                        await Geolocator.openLocationSettings();
+                      }
+                    },
+                  )
+                : null,
           ),
         );
       } else if (previous is AsyncLoading && next is AsyncData) {

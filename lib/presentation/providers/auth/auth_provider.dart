@@ -13,6 +13,7 @@ import '../../../data/datasources/auth_local_datasource.dart';
 import '../../../data/datasources/auth_remote_datasource.dart';
 import '../../../data/repositories/auth_repository_impl.dart';
 
+import '../../../core/errors/failures.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/usecases/login_usecase.dart';
 
@@ -118,7 +119,7 @@ class AuthState extends _$AuthState {
     final result = await useCase(LoginParams(phone: phone, password: password));
 
     state = await result.fold(
-      (failure) async => AsyncError(failure.message, StackTrace.current),
+      (failure) async => AsyncError(failure, StackTrace.current),
       (_) async {
         final user = await ref
             .read(authLocalDataSourceProvider)
@@ -126,7 +127,7 @@ class AuthState extends _$AuthState {
 
         if (user == null) {
           return AsyncError(
-            'Login succeeded but user not found',
+            CacheFailure('تعذر حفظ بيانات الدخول، حاول مرة أخرى'),
             StackTrace.current,
           );
         }
@@ -152,7 +153,7 @@ class AuthState extends _$AuthState {
 
       final userResult = await repo.getCurrentUser();
       state = userResult.fold(
-        (failure) => AsyncError(failure.message, StackTrace.current),
+        (failure) => AsyncError(failure, StackTrace.current),
         (user) => AsyncData(user),
       );
     });
@@ -162,7 +163,14 @@ class AuthState extends _$AuthState {
   /// Logout
   /// =====================
   Future<void> logout() async {
+    // logout في الـ Repository يمسح البيانات محلياً دائماً حتى لو فشل السيرفر
     await ref.read(authRepositoryProvider).logout();
+    state = const AsyncData(null);
+  }
+
+  /// انتهت الجلسة ولم ينجح تجديد التوكن (يستدعيها ApiClient)
+  Future<void> sessionExpired() async {
+    await ref.read(authLocalDataSourceProvider).clearAuthData();
     state = const AsyncData(null);
   }
 }

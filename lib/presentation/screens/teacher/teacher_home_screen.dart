@@ -2,8 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/core/errors/exception_mapper.dart';
-import 'package:myapp/core/errors/failures.dart';
+import 'package:myapp/core/errors/error_handler.dart';
 import 'package:myapp/core/network/connectivity_provider.dart';
 // import 'package:myapp/core/errors/failures.dart';
 import 'package:myapp/core/theme/app_colors.dart';
@@ -13,6 +12,7 @@ import 'package:myapp/domain/entities/student.dart';
 import 'package:myapp/domain/entities/user.dart';
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 import 'package:myapp/presentation/providers/teacher/teacher_provider.dart';
+import 'package:myapp/presentation/widgets/app_error_view.dart';
 
 class TeacherHomeScreen extends ConsumerStatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -72,14 +72,9 @@ class _TeacherHomeScreenState extends ConsumerState<TeacherHomeScreen> {
     } catch (e) {
       debugPrint('❌ [WS] connect error: $e');
 
-      // 4) حول الاستثناء إلى Failure برسالة لطيفة
-      final failure = mapExceptionToFailure(e);
-
-      // 5) اعرض رسالة للمستخدم
+      // 4) حول الاستثناء إلى رسالة مناسبة واعرضها للمستخدم
       if (mounted) {
-        final msg = failure.message.isNotEmpty
-            ? failure.message
-            : 'تعذر الاتصال بالخدمة، حاول مرة أخرى';
+        final msg = failureMessage(e);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ $msg'), backgroundColor: Colors.red),
@@ -540,25 +535,10 @@ class ActiveRequestsSection extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) {
-            final msg = err is Failure ? err.message : err.toString();
-
-            return Center(
-              child: Column(
-                children: [
-                  Icon(Icons.error_outline, color: AppColors.error, size: 48),
-                  const SizedBox(height: 8),
-
-                  Text(msg),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () => ref.refresh(activeRequestsProvider),
-                    child: const Text('إعادة المحاولة'),
-                  ),
-                ],
-              ),
-            );
-          },
+          error: (err, _) => AppErrorView(
+            error: err,
+            onRetry: () => ref.refresh(activeRequestsProvider),
+          ),
         ),
       ],
     );
@@ -696,7 +676,7 @@ class ActiveRequestCard extends ConsumerWidget {
 
           messenger.showSnackBar(
             SnackBar(
-              content: Text('❌ ${failure.message}'),
+              content: Text('❌ ${failureMessage(failure)}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -714,8 +694,8 @@ class ActiveRequestCard extends ConsumerWidget {
         },
       );
     } catch (e) {
-      // ✅ حول أي Exception إلى Failure برسالة مناسبة
-      final failure = mapExceptionToFailure(e);
+      // ✅ حول أي Exception إلى رسالة مناسبة
+      final msg = failureMessage(e);
 
       // ❌ رجّع الطلب لأن العملية فشلت
       ref.read(webSocketActiveRequestsProvider.notifier).upsert(request);
@@ -729,7 +709,7 @@ class ActiveRequestCard extends ConsumerWidget {
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('❌ ${failure.message}'),
+          content: Text('❌ $msg'),
           backgroundColor: Colors.red,
         ),
       );

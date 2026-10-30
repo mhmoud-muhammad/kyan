@@ -9,7 +9,7 @@ import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/domain/entities/reset_password_usecase.dart';
 import 'package:myapp/presentation/providers/auth/reset_password_controller.dart';
 
-import 'package:myapp/core/errors/failures.dart'; // ✅ مهم للـ Failure types
+import 'package:myapp/core/errors/error_handler.dart';
 import '../../../core/utils/validators.dart';
 
 // ملاحظة: هذه providers المحلية غير مستخدمة فعلياً لأنك تعتمد على resetPasswordControllerProvider
@@ -63,44 +63,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   // ✅ تحويل أي خطأ إلى رسالة User-friendly
-  String friendlyResetError(Object? err) {
-    if (err == null) return 'حدث خطأ غير متوقع';
-
-    if (err is Failure) {
-      if (err is ValidationFailure) {
-        if (err.errors.isNotEmpty) {
-          return err.errors.values.first;
-        }
-        return err.message.isNotEmpty ? err.message : 'البيانات المدخلة غير صحيحة';
-      }
-
-      if (err is NetworkFailure) {
-        return err.message.isNotEmpty ? err.message : 'لا يوجد اتصال بالإنترنت';
-      }
-
-      if (err is UnauthorizedFailure) {
-        // في نسيان كلمة المرور غالباً معناها بيانات غير صحيحة
-        return 'رقم الهاتف أو رقم الهوية غير صحيح';
-      }
-
-      if (err is ServerFailure) {
-        final msg = err.message.trim();
-        if (msg.isNotEmpty) return msg;
-        return 'تعذر تنفيذ العملية الآن، حاول لاحقًا';
-      }
-
-      return err.message.isNotEmpty ? err.message : 'حدث خطأ غير متوقع';
-    }
-
-    final s = err.toString();
-
-    // fallback heuristics (احتياط)
-    if (s.contains('phone') && s.contains('invalid')) return 'رقم الهاتف غير صحيح';
-    if (s.contains('national') || s.contains('id')) return 'رقم الهوية غير صحيح';
-    if (s.contains('password')) return 'كلمة المرور غير صالحة';
-
-    return 'تعذر إعادة تعيين كلمة المرور، تحقق من البيانات وحاول مرة أخرى';
-  }
+  String friendlyResetError(Object? err) => failureMessage(err);
 
   void _clearErrorAndCloseOverlay() {
     // ✅ تصفير الحالة لإخفاء overlay بدون pop للشاشة

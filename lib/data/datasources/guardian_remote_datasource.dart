@@ -17,18 +17,11 @@ class GuardianRemoteDataSourceImpl implements GuardianRemoteDataSource {
 
   GuardianRemoteDataSourceImpl(this.apiClient);
 
-  void _handleDioError(DioException e) {
-    if (e.response?.statusCode == 401) {
-      throw UnauthorizedException(
-        e.response?.data?['message'] ??
-            'انتهت الجلسة، يرجى تسجيل الدخول مجدداً',
-      );
-    } else {
-      throw ServerException(
-        e.message ?? 'حدث خطأ في الخادم',
-        code: e.response?.statusCode,
-      );
-    }
+  /// يتحقق أن الرد قائمة، وإلا يرمي ServerException
+  List<dynamic> _asList(dynamic data) {
+    if (data is List) return data;
+    if (data is Map && data['results'] is List) return data['results'] as List;
+    throw ServerException('استجابة غير متوقعة من الخادم');
   }
 
   @override
@@ -39,14 +32,15 @@ class GuardianRemoteDataSourceImpl implements GuardianRemoteDataSource {
         queryParameters: {},
       );
 
-      // apiClient عندك أصلاً بيرمي DioException لأي non-2xx
-      // فهنا غالباً response.statusCode = 200 فقط
-      final List<dynamic> data = response.data;
-      return data.map((json) => School.fromJson(json)).toList();
+      // apiClient يرمي DioException لأي non-2xx، والـ Repository يحوّله لـ Failure
+      return _asList(response.data).map((json) => School.fromJson(json)).toList();
     } on DioException {
-      rethrow; // ✅ مهم
+      rethrow;
+    } on ServerException {
+      rethrow;
     } catch (e) {
-      throw ServerException('فشل تحميل المدارس'); // رسالة عامة فقط
+      // خطأ في تحويل البيانات (JSON)
+      throw ServerException('تعذر قراءة بيانات المدارس');
     }
   }
 
@@ -83,14 +77,9 @@ class GuardianRemoteDataSourceImpl implements GuardianRemoteDataSource {
       if (kDebugMode) {
         debugPrint('❌ [PickupRequest] Dio Error: ${e.response?.statusCode}');
         debugPrint('❌ [PickupRequest] Error Body: ${e.response?.data}');
-        debugPrint('❌ [PickupRequest] Message: ${e.message}');
       }
-
-      _handleDioError(e);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ [PickupRequest] Unexpected Error: $e');
-      }
+      // نمرر الخطأ كما هو حتى يتعرف الـ mapper على رسالة السيرفر
+      // (مثل: خارج نطاق المدرسة) وعلى انقطاع الشبكة
       rethrow;
     }
   }
@@ -103,12 +92,14 @@ class GuardianRemoteDataSourceImpl implements GuardianRemoteDataSource {
         queryParameters: {'school_id': schoolId},
       );
 
-      final List<dynamic> data = response.data;
-      return data.map((json) => Student.fromJson(json)).toList();
+      return _asList(response.data).map((json) => Student.fromJson(json)).toList();
     } on DioException {
-      rethrow; // ✅ مهم
+      rethrow;
+    } on ServerException {
+      rethrow;
     } catch (e) {
-      throw ServerException('فشل تحميل المدارس'); // رسالة عامة فقط
+      // خطأ في تحويل البيانات (JSON)
+      throw ServerException('تعذر قراءة بيانات الطلاب');
     }
   }
 }

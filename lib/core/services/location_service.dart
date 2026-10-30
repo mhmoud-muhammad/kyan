@@ -13,19 +13,33 @@ class LocationService {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        return Left(ServerFailure('خدمة الموقع معطلة، فعّل GPS من الإعدادات'));
+        return Left(
+          PermissionFailure(
+            'خدمة الموقع (GPS) معطلة\nفعّلها من إعدادات الجهاز ثم أعد المحاولة',
+            requiresSettings: true,
+          ),
+        );
       }
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          return Left(UnauthorizedFailure('صلاحيات الموقع مرفوضة'));
+          return Left(
+            PermissionFailure(
+              'يجب السماح للتطبيق بالوصول إلى موقعك لإرسال طلب الاستلام',
+            ),
+          );
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        return Left(UnauthorizedFailure('تم رفض صلاحيات الموقع بشكل دائم'));
+        return Left(
+          PermissionFailure(
+            'صلاحية الموقع مرفوضة\nفعّلها من إعدادات التطبيق لإرسال طلب الاستلام',
+            requiresSettings: true,
+          ),
+        );
       }
 
       return const Right(true);
@@ -43,8 +57,8 @@ class LocationService {
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.high,
             distanceFilter: 0,
+            timeLimit: Duration(seconds: 10),
           ),
-          timeLimit: const Duration(seconds: 10),
         );
         _cachedHigh = pos;
         _cachedAt = DateTime.now();
@@ -71,25 +85,22 @@ class LocationService {
 
         try {
           final pos = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
+            locationSettings: LocationSettings(
               accuracy: LocationAccuracy.high,
               distanceFilter: 0,
+              timeLimit: timeLimit,
             ),
-            timeLimit: timeLimit,
           );
           _cachedHigh = pos;
           _cachedAt = DateTime.now();
           return Right(pos);
         } catch (e) {
-          final failure = mapExceptionToFailure(e);
-          // تخصيص رسالة لو GPS أخذ وقت طويل/فشل
+          // GPS أخذ وقت طويل أو فشل في تحديد الموقع
           return Left(
-            failure is NetworkFailure
-                ? failure
-                : ServerFailure(
-                    'تعذر تحديد موقعك بدقة.\n'
-                    'فعّل GPS، وانتظر قليلاً، وتأكد أنك في مكان مفتوح.',
-                  ),
+            PermissionFailure(
+              'تعذر تحديد موقعك بدقة.\n'
+              'فعّل GPS، وانتظر قليلاً، وتأكد أنك في مكان مفتوح.',
+            ),
           );
         }
       },

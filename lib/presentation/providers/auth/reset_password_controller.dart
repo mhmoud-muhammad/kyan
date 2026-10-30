@@ -16,7 +16,7 @@ class ResetPasswordController extends _$ResetPasswordController {
     final result = await useCase(params);
 
     state = result.fold(
-      (failure) => AsyncError(failure.message, StackTrace.current),
+      (failure) => AsyncError(failure, StackTrace.current),
       (message) => AsyncData(message),
     );
   }

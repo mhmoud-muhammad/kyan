@@ -1,5 +1,4 @@
 // lib/data/datasources/auth_remote_datasource.dart
-import 'package:dio/dio.dart';
 import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/network/token_manager.dart';
 import 'package:myapp/domain/entities/reset_password_usecase.dart';
@@ -13,43 +12,24 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource(this.apiClient, this.tokenManager);
 
+  /// الأخطاء (DioException) تمر كما هي ويحوّلها الـ Repository إلى Failure
   Future<String> resetPassword(ResetPasswordParams params) async {
-    try {
-      final response = await apiClient.post(
-        ApiConstants.resetPasswordEndpoint, // ✅ بدون baseUrl لأن ApiClient عنده baseUrl
-        data: {
-          'phone': params.phone.trim(),
-          'national_id': params.nationalId.trim(),
-          'new_password': params.newPassword,
-          'confirm_password': params.confirmPassword,
-        },
-      );
+    final response = await apiClient.post(
+      ApiConstants.resetPasswordEndpoint, // ✅ بدون baseUrl لأن ApiClient عنده baseUrl
+      data: {
+        'phone': params.phone.trim(),
+        'national_id': params.nationalId.trim(),
+        'new_password': params.newPassword,
+        'confirm_password': params.confirmPassword,
+      },
+    );
 
-      // ApiClient عندك يرمي DioException لو status غير 2xx
-      final data = response.data;
-      if (data is Map && data['detail'] != null) {
-        return data['detail'].toString();
-      }
-      return 'تم تغيير كلمة السر بنجاح';
-    } on DioException catch (e) {
-      // حاول استخراج رسالة واضحة
-      final res = e.response?.data;
-      if (res is Map) {
-        // أول رسالة من أول حقل
-        for (final entry in res.entries) {
-          final v = entry.value;
-          if (v is List && v.isNotEmpty) {
-            throw ServerException(v.first.toString());
-          }
-          if (v is String) {
-            throw ServerException(v);
-          }
-        }
-      }
-      throw ServerException('بيانات غير صحيحة');
-    } catch (e) {
-      throw ServerException('حدث خطأ غير متوقع');
+    // ApiClient يرمي DioException لو status غير 2xx
+    final data = response.data;
+    if (data is Map && data['detail'] != null) {
+      return data['detail'].toString();
     }
+    return 'تم تغيير كلمة السر بنجاح';
   }
 
   /// 🔹 تسجيل الدخول

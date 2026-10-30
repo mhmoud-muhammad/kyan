@@ -17,8 +17,8 @@
     Future<bool> get isConnected async {
       try {
         final result = await _connectivity.checkConnectivity();
-        // ignore: unrelated_type_equality_checks
-        return result != ConnectivityResult.none;
+        return result.isNotEmpty &&
+            !result.every((r) => r == ConnectivityResult.none);
       } catch (e) {
         // إذا فشل الفحص، افترض أن الاتصال غير متاح
         

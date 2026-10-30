@@ -56,28 +56,25 @@ class PickupRequestForStudent extends _$PickupRequestForStudent {
       maxAge: const Duration(seconds: 25),
       timeLimit: const Duration(seconds: 10),
     );
-    // التعامل مع نتيجة الموقع
-    locationResult.fold(
-      (failure) {
-        // خطأ في الحصول على الموقع
-        state = AsyncError(failure, StackTrace.current);
-      },
-      (position) async {
-        // 3️⃣ استدعاء useCase مع الموقع الداخلي
-        final useCase = ref.read(createPickupRequestUseCaseProvider);
-        //final result = await useCase(studentId, lat: 17.688277, lng: 33.981130);
-        final result = await useCase(
-          studentId,
-          lat: position.latitude,
-          lng: position.longitude,
-        );
+    // خطأ في الحصول على الموقع (صلاحية مرفوضة / GPS معطل)
+    final position = locationResult.fold((failure) {
+      state = AsyncError(failure, StackTrace.current);
+      return null;
+    }, (pos) => pos);
+    if (position == null) return;
 
-        // 4️⃣ تحديث الحالة بعد تنفيذ الطلب
-        state = result.fold((failure) {
-          
-          return AsyncError(failure.message, StackTrace.current);
-        }, (_) => const AsyncData(null));
-      },
+    // 3️⃣ استدعاء useCase مع الموقع
+    final useCase = ref.read(createPickupRequestUseCaseProvider);
+    final result = await useCase(
+      studentId,
+      lat: position.latitude,
+      lng: position.longitude,
+    );
+
+    // 4️⃣ تحديث الحالة بعد تنفيذ الطلب (نمرر Failure نفسه وليس النص فقط)
+    state = result.fold(
+      (failure) => AsyncError(failure, StackTrace.current),
+      (_) => const AsyncData(null),
     );
   }
 }

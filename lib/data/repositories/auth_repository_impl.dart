@@ -1,8 +1,7 @@
 // lib/data/repositories/auth_repository_impl.dart
 
 import 'package:dartz/dartz.dart';
-import 'package:myapp/core/errors/exception_mapper.dart';
-import 'package:myapp/core/errors/exceptions.dart';
+import 'package:myapp/core/errors/error_handler.dart';
 import 'package:myapp/core/network/token_manager.dart';
 import 'package:myapp/domain/entities/auth_response.dart';
 import 'package:myapp/domain/entities/reset_password_usecase.dart';
@@ -26,20 +25,22 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
 
- @override
-  Future<Either<Failure, String>> resetPassword(ResetPasswordParams params) async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
-      final msg = await remoteDataSource.resetPassword(params);
-      return Right(msg);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (_) {
-      return Left(ServerFailure('حدث خطأ غير متوقع'));
-    }
+  @override
+  Future<Either<Failure, String>> resetPassword(
+    ResetPasswordParams params,
+  ) async {
+    final result = await safeCall(
+      () => remoteDataSource.resetPassword(params),
+      networkInfo: networkInfo,
+      tag: 'resetPassword',
+    );
+    // في إعادة تعيين كلمة المرور 401/403 معناها بيانات غير مطابقة وليس انتهاء الجلسة
+    return result.leftMap(
+      (f) => f is UnauthorizedFailure || f is ForbiddenFailure
+          ? AuthFailure('رقم الهاتف أو رقم الهوية غير صحيح')
+          : f,
+    );
   }
-
-  
 
   /// 🔹 تسجيل الدخول
   @override
@@ -47,67 +48,57 @@ class AuthRepositoryImpl implements AuthRepository {
     required String phone,
     required String password,
   }) async {
-    if (!await networkInfo.isConnected) {
-      return Left(NetworkFailure());
-    }
-
-    try {
+    final result = await safeCall(() async {
       // 1️⃣ Login (يحفظ access + refresh داخليًا)
       final authResponse = await remoteDataSource.login(phone, password);
-     
-      // 2️⃣ بناء User من البيانات المتاحة (role)
-      final user = User(role: authResponse.role, id: null , name: null, phone: phone);
 
-      // 3️⃣ تخزين User محليًا
+      // 2️⃣ بناء User من البيانات المتاحة (role) وتخزينه محليًا
+      final user = User(
+        role: authResponse.role,
+        id: null,
+        name: null,
+        phone: phone,
+      );
       await localDataSource.cacheUser(user);
 
-      return Right(authResponse);
-      
-    }on Exception catch (e) {
-  return Left(mapExceptionToFailure(e));
-}
+      return authResponse;
+    }, networkInfo: networkInfo, tag: 'login');
+
+    // 401 في تسجيل الدخول = رقم الهاتف أو كلمة المرور غير صحيحة
+    return result.leftMap((f) => f is UnauthorizedFailure ? AuthFailure() : f);
   }
 
-  /// 🔹 استرجاع بيانات المستخدم الحالي (مع Proactive Refresh)
+  /// 🔹 استرجاع بيانات المستخدم الحالي
   @override
   Future<Either<Failure, User>> getCurrentUser() async {
-    try {
-      // 1️⃣ أولوية للكاش
-      final cachedUser = await localDataSource.getCachedUser();
-      if (cachedUser != null) {
-        return Right(cachedUser);
-      }
+    // 1️⃣ أولوية للكاش
+    final cachedUser = await localDataSource.getCachedUser();
+    if (cachedUser != null) return Right(cachedUser);
 
-      // 2️⃣ تحقق من الاتصال
-      if (!await networkInfo.isConnected) {
-        return Left(NetworkFailure());
-      }
-
-      // 3️⃣ جلب المستخدم من الـ API
+    // 2️⃣ جلب المستخدم من الـ API
+    return safeCall(() async {
       final userData = await remoteDataSource.getCurrentUser();
       final user = User.fromJson(userData);
-
       await localDataSource.cacheUser(user);
-      return Right(user);
-    } on Exception catch (e) {
-  return Left(mapExceptionToFailure(e));
-}
+      return user;
+    }, networkInfo: networkInfo, tag: 'getCurrentUser');
   }
 
   /// 🔹 تسجيل الخروج
+  /// يتم مسح بيانات الجلسة محلياً دائماً، حتى لو فشل إبلاغ السيرفر
+  /// (مثلاً بدون إنترنت) حتى لا يبقى المستخدم عالقاً.
   @override
   Future<Either<Failure, void>> logout() async {
     try {
-      if (await networkInfo.isConnected) {
-        final refreshToken = await localDataSource.getRefreshToken();
-        await remoteDataSource.logout(refreshToken!);
+      final refreshToken = await localDataSource.getRefreshToken();
+      if (refreshToken != null && await networkInfo.isConnected) {
+        await remoteDataSource.logout(refreshToken);
       }
+    } catch (e, st) {
+      logError(e, st, tag: 'logout (remote)');
+    }
 
-      await localDataSource.clearAuthData();
-      return const Right(null);
-    } on Exception catch (e) {
-  return Left(mapExceptionToFailure(e));
-}
+    return safeCall(localDataSource.clearAuthData, tag: 'logout (local)');
   }
 
   /// 🔹 تحقق من وجود توكن صالح
@@ -124,19 +115,13 @@ class AuthRepositoryImpl implements AuthRepository {
   /// 🔹 تحديث التوكن باستخدام Refresh Token
   @override
   Future<Either<Failure, String>> refreshToken() async {
-    try {
-      final refreshToken = await localDataSource.getRefreshToken();
-      if (refreshToken == null) {
-        return Left(UnauthorizedFailure('No refresh token found'));
-      }
+    final refreshToken = await localDataSource.getRefreshToken();
+    if (refreshToken == null) return Left(UnauthorizedFailure());
 
-      final newAccessToken = await remoteDataSource.refreshToken(refreshToken);
-
-      await localDataSource.cacheTokens(newAccessToken as String, refreshToken);
-
-      return Right(newAccessToken as String);
-    } on Exception catch (e) {
-  return Left(mapExceptionToFailure(e));
-}
+    return safeCall(() async {
+      final auth = await remoteDataSource.refreshToken(refreshToken);
+      await localDataSource.cacheTokens(auth.accessToken, auth.refreshToken);
+      return auth.accessToken;
+    }, tag: 'refreshToken');
   }
 }

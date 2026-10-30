@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myapp/core/errors/exception_mapper.dart';
+import 'package:myapp/core/errors/error_handler.dart';
 import 'package:myapp/core/errors/exceptions.dart';
 import 'package:myapp/core/services/websocket_service.dart';
 import 'package:myapp/domain/entities/student.dart';
@@ -181,16 +181,9 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
         '/teacher/student/$studentId/update-status/', // تحقق من المسار الصحيح
         data: {'status': newStatus},
       );
-    } on DioException catch (_) {
-      // print('❌ DioException full: ${e.toString()}');
-      // print('❌ Response status: ${e.response?.statusCode}');
-      // print('❌ Response data: ${e.response?.data}');
-      rethrow; // 🔥 هذا السطر هو الفارق
-      // 🔥 مهم جدًا
-
-      // ... باقي المعالجة
-    } catch (e) {
-      throw ServerException('فشل تحديث حالة الطالب: $e');
+    } on DioException {
+      // نمرر الخطأ كما هو، والـ Repository يحوّله لـ Failure برسالة مناسبة
+      rethrow;
     }
   }
   // ==================== تحديث حالة الطالب ====================
@@ -202,8 +195,11 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
         ApiConstants.teacherDashboardEndpoint,
       );
       return TeacherDashboardStats.fromJson(response.data);
+    } on DioException {
+      rethrow;
     } catch (e) {
-      throw ServerException('فشل تحميل الإحصائيات: $e');
+      // خطأ في تحويل البيانات (JSON)
+      throw ServerException('تعذر قراءة الإحصائيات من الخادم');
     }
   }
 
@@ -231,8 +227,11 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
       return data.map((json) => ActiveRequest.fromJson(json)).toList();
     } on DioException {
       rethrow;
+    } on ServerException {
+      rethrow;
     } catch (e) {
-      throw ServerException('فشل تحميل الطلبات النشطة');
+      // خطأ في تحويل البيانات (JSON)
+      throw ServerException('تعذر قراءة الطلبات النشطة من الخادم');
     }
   }
 
@@ -242,7 +241,7 @@ class TeacherRemoteDataSourceImpl implements TeacherRemoteDataSource {
       final studentsMap = ref.read(webSocketStudentsProvider);
       return studentsFromMapByType(studentsMap, statusType);
     } catch (e) {
-      throw ServerException('فشل تحميل قائمة الطلاب من WebSocket: $e');
+      throw ServerException('تعذر تحميل قائمة الطلاب');
     }
   }
 
@@ -285,59 +284,41 @@ class TeacherRepositoryImpl implements TeacherRepository {
   Future<Either<Failure, void>> updateStudentStatus(
     int studentId,
     String newStatus,
-  ) async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
-      await remoteDataSource.updateStudentStatus(studentId, newStatus);
-      return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-  return Left(mapExceptionToFailure(e));
-}
+  ) {
+    return safeCall(
+      () => remoteDataSource.updateStudentStatus(studentId, newStatus),
+      networkInfo: networkInfo,
+      tag: 'updateStudentStatus',
+    );
   }
 
   @override
-  Future<Either<Failure, TeacherDashboardStats>> getDashboardStats() async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
-      final result = await remoteDataSource.getDashboardStats();
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(mapExceptionToFailure(e));
-    }
+  Future<Either<Failure, TeacherDashboardStats>> getDashboardStats() {
+    return safeCall(
+      remoteDataSource.getDashboardStats,
+      networkInfo: networkInfo,
+      tag: 'getDashboardStats',
+    );
   }
 
   @override
-  Future<Either<Failure, List<ActiveRequest>>> getActiveRequests() async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
-      final result = await remoteDataSource.getActiveRequests();
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(
-        mapExceptionToFailure(e is Exception ? e : Exception(e.toString())),
-      );
-    }
+  Future<Either<Failure, List<ActiveRequest>>> getActiveRequests() {
+    return safeCall(
+      remoteDataSource.getActiveRequests,
+      networkInfo: networkInfo,
+      tag: 'getActiveRequests',
+    );
   }
 
+  /// البيانات هنا من WebSocket (محلية) فلا نحتاج فحص الإنترنت
   @override
   Future<Either<Failure, List<Student>>> getStudentsByStatus(
     String statusType,
-  ) async {
-    if (!await networkInfo.isConnected) return Left(NetworkFailure());
-    try {
-      final result = await remoteDataSource.getStudentsByStatus(statusType);
-      return Right(result);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(mapExceptionToFailure(e));
-    }
+  ) {
+    return safeCall(
+      () => remoteDataSource.getStudentsByStatus(statusType),
+      tag: 'getStudentsByStatus',
+    );
   }
 }
 

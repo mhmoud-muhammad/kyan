@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/storage_keys.dart';
+import 'package:myapp/core/errors/error_handler.dart';
 import '../../../core/utils/validators.dart';
 import '../../providers/auth/auth_provider.dart';
 
@@ -44,7 +45,7 @@ class LoginScreen extends ConsumerWidget {
         },
         loading: () {},
         error: (error, _) {
-          ref.read(errorMessageProvider.notifier).state = error as String;
+          ref.read(errorMessageProvider.notifier).state = failureMessage(error);
           Timer(const Duration(seconds: 3), () {
             if (ref.exists(errorMessageProvider)) {
               ref.read(errorMessageProvider.notifier).state = null;

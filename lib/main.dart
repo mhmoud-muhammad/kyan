@@ -1,11 +1,14 @@
 // lib/main.dart
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/kyan.dart';
+import 'core/errors/error_handler.dart';
+import 'presentation/widgets/app_error_view.dart';
 // إذا عندك apiClientProvider هنا (مثال)
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 
@@ -38,6 +41,7 @@ final flutterLocalNotificationsPluginProvider =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _setupGlobalErrorHandling();
 
   // إعدادات الإشعارات
   const AndroidInitializationSettings initializationSettingsAndroid =
@@ -72,13 +76,50 @@ void main() async {
     ],
   );
   // بعد إنشاء container مباشرة:
-  container.read(apiClientProvider);
+  final apiClient = container.read(apiClientProvider);
 
-  // اشترك مرة واحدة
+  // ✅ عند فشل تجديد الجلسة: امسح بيانات الدخول وارجع لصفحة الدخول
+  apiClient.onLogoutRequired.listen((_) async {
+    await container.read(authStateProvider.notifier).sessionExpired();
+    appRouter.go('/login');
+    _showGlobalMessage('انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى');
+  });
 
   runApp(
     UncontrolledProviderScope(container: container, child: const KyanApp()),
   );
+}
+
+/// مفتاح عام لعرض رسائل SnackBar من خارج الشاشات (مثل انتهاء الجلسة)
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+void _showGlobalMessage(String message) {
+  scaffoldMessengerKey.currentState
+    ?..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+}
+
+/// التقاط أي خطأ غير معالج حتى لا يتوقف التطبيق أو تظهر شاشة حمراء/رمادية
+void _setupGlobalErrorHandling() {
+  // أخطاء إطار Flutter (أثناء البناء والرسم)
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    logError(details.exception, details.stack, tag: 'FlutterError');
+  };
+
+  // أخطاء async غير معالجة
+  PlatformDispatcher.instance.onError = (error, stack) {
+    logError(error, stack, tag: 'Uncaught');
+    return true; // تم التعامل معه، لا تُغلق التطبيق
+  };
+
+  // بدل الشاشة الحمراء/الرمادية عند فشل بناء Widget في نسخة النشر
+  if (kReleaseMode) {
+    ErrorWidget.builder = (details) => const AppErrorView.compact();
+  }
 }
 
 class KyanApp extends StatelessWidget {
@@ -89,6 +130,7 @@ class KyanApp extends StatelessWidget {
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
 
       // Localization
       localizationsDelegates: const [

@@ -29,9 +29,9 @@ class TokenManager {
     final issuedAtMillis = await storage.read(key: StorageKeys.tokenIssuedAt);
     if (issuedAtMillis == null) return false;
 
-    final issuedAt = DateTime.fromMillisecondsSinceEpoch(
-      int.parse(issuedAtMillis),
-    );
+    final issuedAtMs = int.tryParse(issuedAtMillis);
+    if (issuedAtMs == null) return false;
+    final issuedAt = DateTime.fromMillisecondsSinceEpoch(issuedAtMs);
 
     final expiresAt = issuedAt.add(tokenLifetime);
     final remaining = expiresAt.difference(DateTime.now());
@@ -127,9 +127,9 @@ class TokenManager {
     final issuedAtMillis = await storage.read(key: StorageKeys.tokenIssuedAt);
     if (issuedAtMillis == null) return null;
 
-    final issuedAt = DateTime.fromMillisecondsSinceEpoch(
-      int.parse(issuedAtMillis),
-    );
+    final issuedAtMs = int.tryParse(issuedAtMillis);
+    if (issuedAtMs == null) return null;
+    final issuedAt = DateTime.fromMillisecondsSinceEpoch(issuedAtMs);
     final expiresAt = issuedAt.add(tokenLifetime);
 
     return expiresAt.difference(DateTime.now());

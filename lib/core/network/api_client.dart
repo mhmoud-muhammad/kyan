@@ -268,6 +268,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:myapp/core/errors/exceptions.dart';
 import '../constants/api_constants.dart';
+import '../constants/storage_keys.dart';
 
 class ApiClient {
   final Dio _dio;
@@ -359,16 +360,19 @@ class ApiClient {
           // ✅ لا نحاول refresh على endpoints الخاصة بالـ auth
           final isAuthFreeEndpoint = _isAuthFreeEndpoint(opts);
 
-          // ✅ Network down
-          if (error.type == DioExceptionType.connectionError ||
+          // ✅ Network down / timeout
+          final isTimeout =
               error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
-              error.type == DioExceptionType.sendTimeout) {
+              error.type == DioExceptionType.sendTimeout;
+          if (isTimeout || error.type == DioExceptionType.connectionError) {
             return handler.reject(
               DioException(
                 requestOptions: opts,
-                type: DioExceptionType.unknown,
-                error: NetworkException('لا يوجد اتصال بالإنترنت'),
+                type: error.type,
+                error: isTimeout
+                    ? NetworkException('الخادم لا يستجيب', true)
+                    : NetworkException(),
                 response: res,
               ),
             );
@@ -407,7 +411,7 @@ class ApiClient {
             }
 
             // ❌ refresh فشل => logout + UI ينتقل للـ login
-            await _storage.deleteAll();
+            await _clearSession();
             _logoutController.add(null);
 
             // لا نعرض "انتهت الجلسة" - فقط نمرر UnauthorizedException لو احتجت mapper
@@ -416,7 +420,7 @@ class ApiClient {
                 requestOptions: opts,
                 response: res,
                 type: DioExceptionType.badResponse,
-                error: UnauthorizedException('SESSION_EXPIRED'),
+                error: UnauthorizedException(),
               ),
             );
           }
@@ -439,15 +443,27 @@ class ApiClient {
         uriPath.contains(ApiConstants.refreshTokenEndpoint);
   }
 
+  /// يمسح بيانات الجلسة فقط (وليس كل التخزين، حتى لا تُمسح موافقة الخصوصية)
+  Future<void> _clearSession() async {
+    for (final key in [
+      StorageKeys.accessToken,
+      StorageKeys.refreshToken,
+      StorageKeys.tokenIssuedAt,
+      StorageKeys.userData,
+      StorageKeys.userRole,
+    ]) {
+      await _storage.delete(key: key);
+    }
+  }
+
   Future<void> _preemptiveTokenRefresh() async {
     final issuedAtStr = await _storage.read(key: ApiConstants.tokenIssuedAtKey);
     final token = await _storage.read(key: ApiConstants.accessTokenKey);
 
-    if (token == null || issuedAtStr == null) return;
+    final issuedAtMs = int.tryParse(issuedAtStr ?? '');
+    if (token == null || issuedAtMs == null) return;
 
-    final issuedAt = DateTime.fromMillisecondsSinceEpoch(
-      int.parse(issuedAtStr),
-    );
+    final issuedAt = DateTime.fromMillisecondsSinceEpoch(issuedAtMs);
     final expiresAt = issuedAt.add(
       Duration(minutes: ApiConstants.tokenLifetimeMinutes),
     );

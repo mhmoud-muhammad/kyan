@@ -1,30 +1,119 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// test/widget_test.dart
+import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:myapp/core/errors/error_handler.dart';
+import 'package:myapp/core/errors/exception_mapper.dart';
+import 'package:myapp/core/errors/exceptions.dart';
+import 'package:myapp/core/errors/failures.dart';
 
-import 'package:myapp/main.dart';
+DioException _response(int status, dynamic data) {
+  final options = RequestOptions(path: '/x');
+  return DioException(
+    requestOptions: options,
+    type: DioExceptionType.badResponse,
+    response: Response(requestOptions: options, statusCode: status, data: data),
+  );
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const KyanApp());
+  group('mapExceptionToFailure', () {
+    test('connection error → NetworkFailure', () {
+      final e = DioException(
+        requestOptions: RequestOptions(path: '/x'),
+        type: DioExceptionType.connectionError,
+      );
+      expect(mapExceptionToFailure(e), isA<NetworkFailure>());
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('timeout → TimeoutFailure', () {
+      final e = DioException(
+        requestOptions: RequestOptions(path: '/x'),
+        type: DioExceptionType.receiveTimeout,
+      );
+      expect(mapExceptionToFailure(e), isA<TimeoutFailure>());
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('NetworkException wrapped by ApiClient', () {
+      final e = DioException(
+        requestOptions: RequestOptions(path: '/x'),
+        error: NetworkException(),
+      );
+      expect(mapExceptionToFailure(e), isA<NetworkFailure>());
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('SocketException → NetworkFailure', () {
+      expect(
+        mapExceptionToFailure(const SocketException('x')),
+        isA<NetworkFailure>(),
+      );
+    });
+
+    test('400 out of school range → LocationFailure', () {
+      final f = mapExceptionToFailure(
+        _response(400, {
+          'detail': 'التحقق من الموقع فشل: لست في النطاق المسموح',
+        }),
+      );
+      expect(f, isA<LocationFailure>());
+    });
+
+    test('400 field errors → ValidationFailure with first message', () {
+      final f = mapExceptionToFailure(
+        _response(400, {
+          'phone': ['رقم الهاتف غير صحيح'],
+        }),
+      );
+      expect(f, isA<ValidationFailure>());
+      expect(failureMessage(f), 'رقم الهاتف غير صحيح');
+    });
+
+    test('401 → UnauthorizedFailure', () {
+      expect(
+        mapExceptionToFailure(_response(401, null)),
+        isA<UnauthorizedFailure>(),
+      );
+    });
+
+    test('500 never shows the out-of-range message', () {
+      final f = mapExceptionToFailure(
+        _response(500, '<html>Server Error</html>'),
+      );
+      expect(f, isA<ServerFailure>());
+      expect(f.message.contains('بعيد'), isFalse);
+      expect(f.message.contains('<html>'), isFalse);
+    });
+
+    test('unknown error never shows the out-of-range message', () {
+      final f = mapExceptionToFailure(Exception('boom'));
+      expect(f, isA<UnknownFailure>());
+      expect(f.message.contains('بعيد'), isFalse);
+    });
+
+    test('bad JSON → ServerFailure', () {
+      expect(
+        mapExceptionToFailure(const FormatException('bad')),
+        isA<ServerFailure>(),
+      );
+    });
+
+    test('Failure passes through unchanged', () {
+      final f = AuthFailure();
+      expect(mapExceptionToFailure(f), same(f));
+    });
+  });
+
+  group('safeCall', () {
+    test('returns Right on success', () async {
+      final r = await safeCall(() async => 42);
+      expect(r.getOrElse(() => 0), 42);
+    });
+
+    test('returns Left(Failure) on error', () async {
+      final r = await safeCall<int>(() async => throw NetworkException());
+      expect(r.isLeft(), isTrue);
+      r.fold((f) => expect(f, isA<NetworkFailure>()), (_) => fail('Right'));
+    });
   });
 }
