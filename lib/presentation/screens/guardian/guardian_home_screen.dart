@@ -13,6 +13,7 @@ import 'package:myapp/domain/entities/student.dart';
 import 'package:myapp/domain/entities/user.dart';
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 import 'package:myapp/presentation/providers/guardian/guardian_provider.dart';
+import 'package:myapp/presentation/widgets/location_disclosure.dart';
 
 class GuardianHomeScreen extends ConsumerWidget {
   const GuardianHomeScreen({super.key});
@@ -523,6 +524,8 @@ class _StudentListViewState extends ConsumerState<StudentListView> {
       final warmDone = ref.read(locationWarmupDoneProvider);
       if (!warmDone) {
         ref.read(locationWarmupDoneProvider.notifier).state = true;
+        // إفصاح واضح قبل طلب إذن الموقع (شرط Google Play)
+        if (!await ensureLocationDisclosure(context, ref)) return;
         await ref.read(locationServiceProvider).warmUpHighAccuracy();
       }
     });
@@ -828,6 +831,12 @@ class StudentAttendanceCard extends ConsumerWidget {
                       onPressed: isLoading
                           ? null
                           : () async {
+                              if (!await ensureLocationDisclosure(
+                                context,
+                                ref,
+                              )) {
+                                return;
+                              }
                               ref
                                   .read(
                                     pickupRequestForStudentProvider(

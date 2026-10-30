@@ -9,6 +9,27 @@ import 'core/kyan.dart';
 // إذا عندك apiClientProvider هنا (مثال)
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
 
+// طلب إذن الإشعارات (يُستدعى بعد الموافقة على سياسة الخصوصية)
+Future<void> requestNotificationPermissions(
+  FlutterLocalNotificationsPlugin plugin,
+) async {
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    await plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+  }
+
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    await plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+  }
+}
+
 // Provider للوصول إلى مثيل الإشعارات في أي مكان
 final flutterLocalNotificationsPluginProvider =
     Provider<FlutterLocalNotificationsPlugin>((ref) {
@@ -22,7 +43,11 @@ void main() async {
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
   final DarwinInitializationSettings initializationSettingsIOS =
-      DarwinInitializationSettings();
+      DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsIOS,
@@ -35,22 +60,8 @@ void main() async {
     // يمكنك إضافة معالج للنقر على الإشعارات هنا إذا أردت
     // onDidReceiveNotificationResponse: (NotificationResponse response) {},
   );
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
-  }
-
-  // طلب أذونات iOS إذا لزم الأمر
-  if (defaultTargetPlatform == TargetPlatform.iOS) {
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
-  }
+  // ملاحظة: إذن الإشعارات يُطلب بعد موافقة المستخدم على سياسة الخصوصية
+  // (انظر requestNotificationPermissions و SplashScreen)
 
   // تجاوز قيمة provider بالمثيل الذي أنشأناه
   final container = ProviderContainer(

@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
+import 'package:myapp/core/services/privacy_consent_service.dart';
+import 'package:myapp/main.dart'
+    show flutterLocalNotificationsPluginProvider, requestNotificationPermissions;
 import '../../providers/auth/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -109,6 +112,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 // }
  Future<void> _checkAuth() async {
   await Future.delayed(const Duration(milliseconds: 3000));
+  if (!mounted) return;
+
+  // ✅ لا يمكن استخدام التطبيق قبل الموافقة على سياسة الخصوصية
+  final consent = ref.read(privacyConsentServiceProvider);
+  if (!await consent.hasAcceptedPrivacyPolicy()) {
+    if (!mounted) return;
+    context.go('/privacy-consent');
+    return;
+  }
+
+  // طلب إذن الإشعارات بعد الموافقة فقط
+  await requestNotificationPermissions(
+    ref.read(flutterLocalNotificationsPluginProvider),
+  );
   if (!mounted) return;
 
   final localDataSource = ref.read(authLocalDataSourceProvider);

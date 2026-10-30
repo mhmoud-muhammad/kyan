@@ -10,6 +10,7 @@ import 'package:myapp/presentation/screens/teacher/students_list_screen.dart';
 import 'package:myapp/presentation/screens/profile/profile_screen.dart';
 import 'package:myapp/presentation/screens/settings/settings_screen.dart';
 import 'package:myapp/presentation/screens/splash/splash_screen.dart';
+import 'package:myapp/presentation/screens/privacy/privacy_consent_screen.dart';
 import 'package:myapp/presentation/screens/guardian/guardian_home_screen.dart';
 import 'package:myapp/presentation/screens/teacher/stats_details_screen.dart';
 import 'package:myapp/presentation/screens/teacher/teacher_home_screen.dart';
@@ -53,6 +54,12 @@ final appRouter = GoRouter(
       path: '/splash',
       name: 'splash',
       builder: (context, state) => const SplashScreen(),
+    ),
+    GoRoute(
+      path: '/privacy-consent',
+      name: 'privacyConsent',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: PrivacyConsentScreen()),
     ),
     GoRoute(
       path: '/login',

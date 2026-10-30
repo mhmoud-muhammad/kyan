@@ -7,6 +7,14 @@ class AppConstants {
   static const String themeModeKey = 'kyan_theme_mode';
   static const String languageKey = 'kyan_language';
   static const String onboardingCompleted = 'kyan_onboarding_completed';
+
+  // Privacy Policy
+  static const String privacyPolicyUrl =
+      'https://anasmohamed-wq.github.io/privacy-site/';
+  // ارفع هذا الرقم عند تعديل سياسة الخصوصية ليُطلب من المستخدمين الموافقة من جديد
+  static const String privacyPolicyVersion = '1';
+  static const String privacyAcceptedKey = 'kyan_privacy_accepted_version';
+  static const String locationDisclosureKey = 'kyan_location_disclosure_accepted';
   
   // Pagination
   static const int itemsPerPage = 20;

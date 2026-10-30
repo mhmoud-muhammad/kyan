@@ -1,4 +1,4 @@
-package com.example.myapp
+package tech.alkyan.app
 
 import io.flutter.embedding.android.FlutterActivity
 

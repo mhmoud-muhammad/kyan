@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:myapp/core/services/privacy_consent_service.dart';
 import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/text_styles.dart';
 import 'package:myapp/presentation/providers/auth/auth_provider.dart';
@@ -81,6 +82,12 @@ class SettingsScreen extends ConsumerWidget {
               icon: Icons.help_outline_rounded,
               title: 'مركز المساعدة',
               onTap: () {},
+            ),
+            _buildSettingItem(
+              icon: Icons.privacy_tip_outlined,
+              title: 'سياسة الخصوصية',
+              subtitle: 'كيف نجمع بياناتك ونستخدمها ونحميها',
+              onTap: () => openPrivacyPolicy(context),
             ),
             _buildSettingItem(
               icon: Icons.info_outline_rounded,

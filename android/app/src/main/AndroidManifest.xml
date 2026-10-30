@@ -1,14 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Permissions required by geolocator -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- الموقع يُستخدم فقط أثناء فتح التطبيق (عند إرسال طلب استلام).
+         لا نطلب ACCESS_BACKGROUND_LOCATION لأن Google Play يشترط له مراجعة خاصة وتبريراً. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <!-- إشعارات طلبات الاستلام (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="kyan"
+        android:label="كيان"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="false"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -46,6 +52,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- لفتح رابط سياسة الخصوصية في المتصفح (url_launcher) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

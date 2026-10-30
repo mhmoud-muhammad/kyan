@@ -1,0 +1,7 @@
+# انسخ هذا الملف إلى android/key.properties واملأ القيم (لا ترفع key.properties ولا ملف .jks على git)
+# لإنشاء مفتاح الرفع:
+#   keytool -genkey -v -keystore ~/kyan-upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=/absolute/path/to/kyan-upload-keystore.jks
